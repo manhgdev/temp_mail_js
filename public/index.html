@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src https://cdnjs.cloudflare.com; img-src 'self' data: https:;"
+    />
+    <title>TempMail — Disposable Email</title>
+    <meta
+      name="description"
+      content="Local temporary mail app for generating disposable inboxes and testing mail flows."
+    />
+    <meta
+      name="keywords"
+      content="temp mail, disposable email, temporary email, local smtp, inbox testing"
+    />
+    <meta name="author" content="manhgdev" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="TempMail — Disposable Email" />
+    <meta
+      property="og:description"
+      content="Create instant disposable email addresses. Protect your inbox from spam."
+    />
+    <meta
+      property="og:image"
+      content="/images/temp-mail-icon.png"
+    />
+    <meta
+      property="og:url"
+      content="/"
+    />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href="/" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TempMail — Disposable Email" />
+    <meta
+      name="twitter:description"
+      content="Create instant disposable email addresses. Protect your inbox from spam."
+    />
+    <meta
+      name="twitter:image"
+      content="/images/temp-mail-icon.png"
+    />
+    <meta name="theme-color" content="#2563EB" />
+    <link rel="icon" href="images/temp-mail-icon.png" type="image/x-icon" />
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+
+    <!-- Confetti -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"
+      defer
+    ></script>
+  </head>
+
+  <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+    <div class="app-container">
+      <!-- Theme toggle -->
+      <div class="theme-switch">
+        <i class="fa-solid fa-moon"></i>
+        <label class="switch">
+          <input
+            type="checkbox"
+            id="theme-toggle"
+            aria-label="Toggle dark mode"
+          />
+          <span class="slider round"></span>
+        </label>
+        <i class="fa-solid fa-sun"></i>
+      </div>
+
+      <!-- Header -->
+      <header role="banner">
+        <div class="header-content">
+          <div class="logo-title">
+            <i class="fa-solid fa-envelope-open-text"></i>
+            <h1>TempMail</h1>
+          </div>
+          <p class="header-subtitle">
+            Instant disposable email addresses. No signup, no hassle.
+          </p>
+          <div class="header-badges">
+            <div class="badge">
+              <div id="status-led" class="status-led offline"></div>
+              <span id="status-text">Offline</span>
+            </div>
+            <div class="badge">
+              <i class="fa-solid fa-bolt"></i>
+              <span>Instant</span>
+            </div>
+            <div class="badge">
+              <i class="fa-solid fa-shield-halved"></i>
+              <span>Private</span>
+            </div>
+            <div
+              class="badge session-timer"
+              id="session-timer"
+              style="display: none"
+            >
+              <i class="fa-solid fa-clock"></i>
+              <span id="session-timer-text">00:00</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main id="main-content" class="main-content" role="main" tabindex="-1">
+        <!-- Email Controls Card -->
+        <div class="card" style="position: relative">
+          <div class="email-controls">
+            <!-- Email address input -->
+            <div class="email-input-group">
+              <i class="fa-solid fa-at input-icon"></i>
+              <input
+                id="addr"
+                placeholder="Click New Address to create an inbox"
+                readonly
+                aria-label="Your temporary email address"
+              />
+              <button
+                onclick="copyEmail()"
+                id="copy-btn"
+                title="Copy email address"
+                class="icon-button"
+                aria-label="Copy email address"
+                data-tooltip="Copy"
+              >
+                <i class="fa-solid fa-copy" id="copy-icon"></i>
+              </button>
+            </div>
+
+            <!-- Domain selector -->
+            <div class="domain-selector">
+              <label>
+                <i class="fa-solid fa-globe"></i>
+                Domain:
+              </label>
+              <select
+                id="domain-select"
+                class="domain-select"
+                aria-label="Select email domain"
+              >
+                <option value="">Loading domains...</option>
+              </select>
+            </div>
+
+            <!-- Controls row -->
+            <div class="controls-row">
+              <div class="button-group">
+                <button
+                  onclick="refreshMail()"
+                  class="primary-button"
+                  title="Refresh inbox"
+                  data-tooltip="Refresh (R)"
+                >
+                  <i class="fa-solid fa-rotate"></i> Refresh
+                </button>
+                <button
+                  onclick="genEmail()"
+                  class="primary-button"
+                  title="Generate new address"
+                  data-tooltip="New (N)"
+                >
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> New Address
+                </button>
+                <button
+                  id="send-test-mail-trigger"
+                  onclick="showSendTestMailModal()"
+                  class="primary-button dev-button hidden"
+                  title="Send test mail"
+                  data-tooltip="Dev test mail"
+                >
+                  <i class="fa-solid fa-paper-plane"></i> Send Test Mail
+                </button>
+              </div>
+
+              <!-- Auto refresh -->
+              <div class="auto-refresh">
+                <label class="checkbox-label">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                  <input type="checkbox" id="auto-refresh" />
+                  <span>Auto</span>
+                </label>
+                <select
+                  id="refresh-interval"
+                  class="select-input"
+                  aria-label="Auto-refresh interval"
+                >
+                  <option value="10" selected>10s</option>
+                  <option value="30">30s</option>
+                  <option value="60">1m</option>
+                  <option value="120">2m</option>
+                </select>
+                <span id="countdown" class="countdown-text"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Countdown progress bar (shown during auto-refresh) -->
+          <div id="countdown-bar-container" class="countdown-bar-container">
+            <div id="countdown-bar" class="countdown-bar"></div>
+          </div>
+        </div>
+
+        <!-- Inbox Card -->
+        <div class="card">
+          <!-- Search -->
+          <div class="search-container">
+            <div class="search-input-group">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input
+                type="text"
+                id="email-search"
+                placeholder="Search emails by subject, sender..."
+                aria-label="Search emails"
+              />
+            </div>
+          </div>
+
+          <!-- Inbox toolbar -->
+          <div class="inbox-toolbar">
+            <div class="email-count">
+              <i class="fa-solid fa-inbox"></i>
+              Inbox
+              <span id="email-count-badge" class="count-badge">0</span>
+            </div>
+            <div class="inbox-actions">
+              <button
+                onclick="deleteAllEmails()"
+                class="ghost-button"
+                title="Delete all emails"
+                id="delete-all-btn"
+                style="display: none"
+              >
+                <i class="fa-solid fa-trash-can"></i> Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Loading & errors -->
+          <div
+            id="loading-spinner"
+            class="spinner hidden"
+            style="display: none"
+          ></div>
+          <div id="error-message" class="error-message hidden"></div>
+
+          <!-- Table -->
+          <div class="table-container">
+            <table id="emails" aria-describedby="email-table-caption">
+              <caption id="email-table-caption" class="visually-hidden">
+                Temporary email inbox
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">
+                    <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
+                    <span class="visually-hidden">ID</span>
+                  </th>
+                  <th scope="col">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i>
+                    <span class="visually-hidden">From</span>
+                  </th>
+                  <th scope="col">
+                    <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+                    <span class="visually-hidden">Subject</span>
+                  </th>
+                  <th scope="col">
+                    <i class="fa-solid fa-calendar" aria-hidden="true"></i>
+                    <span class="visually-hidden">Date</span>
+                  </th>
+                  <th scope="col">
+                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
+                    <span class="visually-hidden">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div
+              id="emails-responsive"
+              class="emails-responsive"
+              aria-live="polite"
+            ></div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer role="contentinfo">
+        <div class="footer-content">
+          <p>
+            <i class="fa-solid fa-code"></i>
+            Local TempMail UI for disposable inbox testing
+          </p>
+
+          <div class="version">
+            <p>Feb 2026 release</p>
+          </div>
+
+          <div class="social">
+            <span title="Email" aria-label="Email">
+              <i class="fa-solid fa-envelope"></i>
+            </span>
+            <span title="GitHub" aria-label="GitHub">
+              <i class="fa-brands fa-github"></i>
+            </span>
+            <span title="LinkedIn" aria-label="LinkedIn">
+              <i class="fa-brands fa-linkedin"></i>
+            </span>
+          </div>
+
+          <div class="footer-buttons">
+            <a class="footer-link-button" href="/submit-domain">
+              <i class="fa-solid fa-globe"></i> Submit Domain
+            </a>
+            <button class="warning-button" onclick="showWarning()">
+              <i class="fa-solid fa-triangle-exclamation"></i> Disclaimer
+            </button>
+            <a
+              class="privacy-button"
+              href="privacy/privacy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="fa-solid fa-shield"></i> Privacy Policy
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Welcome Message -->
+    <div id="welcomeMessage" class="welcome-message">
+      <div class="welcome-message-header">
+        <i class="fas fa-rocket"></i>
+        <h3>Welcome to TempMail</h3>
+      </div>
+      <div class="welcome-message-content">
+        <p>
+          Create a temporary email address when you need one. Use it to sign up for
+          services without revealing your real email.
+        </p>
+        <br />
+        <p><strong>Tips:</strong></p>
+        <ul>
+          <li>Press <kbd>?</kbd> to see keyboard shortcuts</li>
+          <li>Enable auto-refresh to get emails instantly</li>
+          <li>Click "New Address" if loading fails</li>
+        </ul>
+        <br />
+        <p>Use this local stack to verify inbox polling and SMTP ingestion.</p>
+      </div>
+      <div class="welcome-message-actions">
+        <button onclick="hideWelcomeMessage()" class="primary-button">
+          <i class="fa-solid fa-check"></i> Got it!
+        </button>
+      </div>
+    </div>
+
+    <!-- Keyboard shortcut hint -->
+    <div
+      class="shortcut-hint"
+      onclick="showShortcuts()"
+      title="Keyboard shortcuts"
+    >
+      <kbd>?</kbd> Shortcuts
+    </div>
+
+    <!-- Scroll to top button -->
+    <button
+      id="scroll-top-btn"
+      class="scroll-top-btn"
+      onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+      aria-label="Scroll to top"
+    >
+      <i class="fa-solid fa-chevron-up"></i>
+    </button>
+
+    <!-- Mobile FAB -->
+    <div class="mobile-fab" id="mobile-fab">
+      <div class="fab-actions" id="fab-actions">
+        <button
+          class="fab-action"
+          onclick="
+            refreshMail();
+            toggleFab();
+          "
+          aria-label="Refresh"
+          data-tooltip="Refresh"
+        >
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <button
+          class="fab-action"
+          onclick="
+            genEmail();
+            toggleFab();
+          "
+          aria-label="New Address"
+          data-tooltip="New Address"
+        >
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </button>
+        <button
+          class="fab-action"
+          onclick="
+            copyEmail();
+            toggleFab();
+          "
+          aria-label="Copy"
+          data-tooltip="Copy"
+        >
+          <i class="fa-solid fa-copy"></i>
+        </button>
+      </div>
+      <button
+        class="fab-main"
+        id="fab-main"
+        onclick="toggleFab()"
+        aria-label="Quick actions"
+      >
+        <i class="fa-solid fa-plus"></i>
+      </button>
+    </div>
+
+    <!-- Warning Modal -->
+    <script>
+      function showWarning() {
+        const modal = document.createElement("div");
+        modal.className = "email-modal";
+        modal.onclick = (e) => {
+          if (e.target === modal) modal.remove();
+        };
+        modal.innerHTML = `
+          <div class="email-modal-content" style="max-width:500px">
+            <div class="modal-header">
+              <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i> Disclaimer</h2>
+              <button class="close-btn" onclick="this.closest('.email-modal').remove()">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div class="email-body">
+              <p>⚠️ This project is purely for <strong>educational purposes</strong>.</p>
+              <br>
+              <p>We do not allow illegal activities with this project and are not responsible for any incidents that may occur.</p>
+              <br>
+              <p>This project uses a local temporary mail backend for creating disposable inboxes. Use it legally and responsibly.</p>
+              <br>
+              <p style="color:var(--text-tertiary);font-size:0.8rem">Local development disclaimer for this project.</p>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      // Mobile FAB toggle
+      function toggleFab() {
+        const btn = document.getElementById("fab-main");
+        const actions = document.getElementById("fab-actions");
+        btn.classList.toggle("open");
+        actions.classList.toggle("show");
+      }
+
+      // Close FAB on outside click
+      document.addEventListener("click", (e) => {
+        const fab = document.getElementById("mobile-fab");
+        if (fab && !fab.contains(e.target)) {
+          document.getElementById("fab-main")?.classList.remove("open");
+          document.getElementById("fab-actions")?.classList.remove("show");
+        }
+      });
+
+      // Scroll-to-top visibility
+      window.addEventListener(
+        "scroll",
+        () => {
+          const btn = document.getElementById("scroll-top-btn");
+          if (btn) btn.classList.toggle("visible", window.scrollY > 300);
+        },
+        { passive: true },
+      );
+
+      // Button ripple effect
+      document.addEventListener("click", (e) => {
+        const button = e.target.closest("button");
+        if (!button || button.classList.contains("toast-close")) return;
+        const ripple = document.createElement("span");
+        ripple.className = "ripple";
+        const rect = button.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        ripple.style.width = ripple.style.height = size + "px";
+        ripple.style.left = e.clientX - rect.left - size / 2 + "px";
+        ripple.style.top = e.clientY - rect.top - size / 2 + "px";
+        button.appendChild(ripple);
+        ripple.addEventListener("animationend", () => ripple.remove());
+      });
+    </script>
+
+    <!-- Welcome Message Logic -->
+    <script>
+      function hideWelcomeMessage() {
+        const welcomeMessage = document.getElementById("welcomeMessage");
+        welcomeMessage.style.animation = "slideOut 0.5s ease forwards";
+
+        if (typeof confetti === "function") {
+          confetti({
+            particleCount: 120,
+            spread: 160,
+            origin: { y: 0.8 },
+            colors: ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"],
+            startVelocity: 40,
+            gravity: 1.2,
+            scalar: 0.7,
+            ticks: 120,
+          });
+        }
+
+        setTimeout(() => {
+          welcomeMessage.remove();
+          localStorage.setItem("welcomeMessageSeen", "true");
+        }, 500);
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        if (!localStorage.getItem("welcomeMessageSeen")) {
+          setTimeout(() => {
+            const welcomeMessage = document.getElementById("welcomeMessage");
+            if (welcomeMessage) welcomeMessage.classList.add("show");
+          }, 800);
+        } else {
+          const wm = document.getElementById("welcomeMessage");
+          if (wm) wm.remove();
+        }
+      });
+    </script>
+
+    <!-- App scripts -->
+    <script src="js/api.js" type="module"></script>
+    <script src="js/theme.js" type="module"></script>
+  </body>
+</html>

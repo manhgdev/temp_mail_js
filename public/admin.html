@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' https://cdnjs.cloudflare.com https://www.gstatic.com; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://www.gstatic.com; font-src https://cdnjs.cloudflare.com data:; img-src 'self' data: https:;"
+    />
+    <title>TempMail Admin</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body>
+    <div class="app-container admin-app admin-shell">
+      <main class="main-content admin-main">
+        <div id="admin-alert" class="error-message hidden"></div>
+
+        <section class="card admin-nav-shell">
+          <div class="admin-nav">
+            <div class="admin-nav-brand">
+              <i class="fa-solid fa-shield-halved"></i>
+              <div class="admin-nav-brand-copy">
+                <span>TempMail Admin</span>
+                <small id="admin-user-label">Signed out</small>
+              </div>
+            </div>
+            <nav class="admin-nav-links" aria-label="Admin navigation">
+              <a class="admin-nav-link" href="/">Inbox</a>
+              <a class="admin-nav-link" href="/submit-domain">Submit Domain</a>
+              <a class="admin-nav-link active" href="/admin">Admin</a>
+            </nav>
+            <div class="admin-nav-actions hidden" id="admin-panel">
+              <button id="admin-open-add-domain" class="primary-button">
+                <i class="fa-solid fa-plus"></i><span>Add</span>
+              </button>
+              <button id="admin-refresh" class="ghost-button">
+                <i class="fa-solid fa-rotate"></i><span>Refresh</span>
+              </button>
+              <button id="admin-logout" class="warning-button">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i><span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card admin-login-card admin-compact-card" id="admin-auth-card">
+          <div class="admin-login-head">
+            <div class="admin-toolbar-title">
+              <i class="fa-solid fa-shield-halved"></i>
+              <h1>TempMail Admin</h1>
+            </div>
+            <p>Sign in to the admin Dashboard. The domain becomes available for generation immediately after creation.</p>
+          </div>
+          <form id="admin-login-form" class="admin-form-grid">
+            <label>
+              Email
+              <input type="email" name="email" required placeholder="admin@example.com" />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" required placeholder="••••••••" />
+            </label>
+            <div class="admin-login-actions">
+              <button type="submit" class="primary-button admin-login-button">
+                <i class="fa-solid fa-right-to-bracket"></i>
+                <span>Sign in</span>
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section class="hidden admin-stats-grid" id="admin-stats">
+          <article class="card admin-stat-card">
+            <span class="admin-section-kicker">Pending</span>
+            <strong id="admin-pending-count">0</strong>
+            <p>Domains waiting for review</p>
+          </article>
+          <article class="card admin-stat-card">
+            <span class="admin-section-kicker">Active</span>
+            <strong id="admin-active-count">0</strong>
+            <p>Domains available for generation</p>
+          </article>
+          <article class="card admin-stat-card">
+            <span class="admin-section-kicker">Inactive</span>
+            <strong id="admin-inactive-count">0</strong>
+            <p>Managed but currently disabled</p>
+          </article>
+        </section>
+
+        <section class="admin-panels">
+          <section class="card hidden admin-data-card" id="pending-submissions-card">
+            <div class="section-heading admin-section-head">
+              <div>
+                <h2>Pending submissions</h2>
+                <p>Public-submitted domains stay inactive until approved here.</p>
+              </div>
+            </div>
+            <div class="table-container admin-table-wrap admin-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Domain</th>
+                    <th>Submitted</th>
+                    <th>IP</th>
+                    <th>Note</th>
+                    <th>Expires at</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="pending-submissions-body"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="card hidden admin-data-card" id="managed-domains-card">
+            <div class="section-heading admin-section-head">
+              <div>
+                <h2>Managed domains</h2>
+                <p>Only active, non-expired domains are exposed to inbox generation in production.</p>
+              </div>
+            </div>
+            <div class="table-container admin-table-wrap admin-table-shell">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Domain</th>
+                    <th>Status</th>
+                    <th>Expires at</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="managed-domains-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <div class="email-modal hidden" id="admin-add-domain-modal">
+        <div class="email-modal-content admin-modal-content">
+          <div class="modal-header admin-modal-header">
+            <div class="admin-modal-copy">
+              <span class="admin-modal-kicker">Domain management</span>
+              <h2>Add domain</h2>
+            </div>
+            <button class="close-btn" type="button" id="admin-close-add-domain" aria-label="Close">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <form id="admin-add-domain-form" class="admin-form-grid admin-modal-form">
+            <input type="hidden" name="domain_id" />
+            <label>
+              Domain
+              <input type="text" name="domain" required placeholder="mail.example.com" />
+            </label>
+            <label>
+              Expires at
+              <input type="datetime-local" name="expires_at" />
+            </label>
+            <label class="admin-toggle-field" for="admin-domain-active">
+              <span class="admin-toggle-copy">
+                <strong>Active on create</strong>
+              </span>
+              <span class="admin-toggle-shell">
+                <input id="admin-domain-active" type="checkbox" name="active" checked />
+                <span class="admin-toggle-track">
+                  <span class="admin-toggle-knob"></span>
+                </span>
+              </span>
+            </label>
+            <div class="modal-actions admin-modal-footer">
+              <button class="ghost-button" type="button" id="admin-cancel-add-domain">Cancel</button>
+              <button type="submit" class="primary-button" id="admin-submit-domain-button">
+                <i class="fa-solid fa-plus"></i> <span id="admin-submit-domain-label">Add domain</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/admin.js"></script>
+  </body>
+</html>

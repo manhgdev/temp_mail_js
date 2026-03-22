@@ -1,0 +1,13 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+*.venv
+.DS_Store
+
+# production
+/build
+/dist
+
+# package
+package-lock.json

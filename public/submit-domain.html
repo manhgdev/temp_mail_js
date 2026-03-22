@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self' https://cdnjs.cloudflare.com; connect-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; font-src https://cdnjs.cloudflare.com data:; img-src 'self' data: https:;"
+    />
+    <title>Submit Domain</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
+  </head>
+  <body>
+    <div class="app-container admin-app submit-shell">
+      <main class="main-content submit-main">
+        <section class="card admin-nav-shell">
+          <div class="admin-nav">
+            <div class="admin-nav-brand">
+              <i class="fa-solid fa-globe"></i>
+              <span>Submit Domain</span>
+            </div>
+            <nav class="admin-nav-links" aria-label="Site navigation">
+              <a class="admin-nav-link" href="/">Inbox</a>
+              <a class="admin-nav-link active" href="/submit-domain">Submit Domain</a>
+              <a class="admin-nav-link" href="/admin">Admin</a>
+            </nav>
+          </div>
+        </section>
+
+        <section class="card submit-stage">
+          <div class="submit-stage-copy">
+            <span class="admin-section-kicker">Public access</span>
+            <div class="admin-toolbar-title">
+              <i class="fa-solid fa-globe"></i>
+              <h1>Submit a domain</h1>
+            </div>
+            <p>Submit a domain or subdomain you control, then point its mail DNS here before sending it for review.</p>
+            <div class="submit-info-note submit-inline-note">
+              <i class="fa-solid fa-circle-info"></i>
+              <p>
+                Set DNS like this:<br />
+                <b>A: </b> Name: <strong>mail</strong> -> IPv4 address: <strong id="submit-domain-public-ip">loading...</strong><br />
+                <b>MX: </b> Name: <strong>@</strong> -> Mail server: <strong>yourdomain.com</strong> -> Priority: <strong>10</strong>
+              </p>
+            </div>
+            <ul class="submit-info-list submit-inline-list">
+              <li>For <strong>@yourdomain.com</strong>: set <strong>MX Name = @</strong>, <strong>Mail server = mail.yourdomain.com</strong>.</li>
+              <li>For <strong>@mail.yourdomain.com</strong>: set <strong>MX Name = mail</strong>, <strong>Mail server = mail.yourdomain.com</strong>.</li>
+              <li>If you use Cloudflare, keep <strong>mail.yourdomain.com</strong> as <strong>DNS only</strong>.</li>
+            </ul>
+          </div>
+
+          <section class="submit-form-panel">
+            <div class="section-heading admin-section-head">
+              <div>
+                <h2>Submission form</h2>
+                <p>Tip: Contact me on Telegram: <a href="https://t.me/zm_dev" target="_blank" rel="noopener noreferrer">Click here</a> along with the correct DNS domain name for faster approval.</p>
+              </div>
+            </div>
+            <div id="submit-domain-alert" class="error-message hidden"></div>
+            <form id="submit-domain-form" class="admin-form-grid submit-domain-form">
+              <label>
+                Domain
+                <input type="text" name="domain" required placeholder="yourdomain.com" />
+              </label>
+              <label>
+                Requested expiry
+                <input type="datetime-local" name="expires_at" />
+              </label>
+              <label>
+                Note
+                <textarea name="note" rows="3" data-placeholder-template="Telegram @yourname, email owner@example.com, A mail.yourdomain.com -> {{PUBLIC_IP}}, MX Name @ -> mail.yourdomain.com, contact @zm_dev" placeholder="Telegram @yourname, email owner@example.com, A mail.yourdomain.com -> loading..., MX Name @ -> mail.yourdomain.com, contact @zm_dev"></textarea>
+              </label>
+              <div class="submit-form-actions">
+                <button type="submit" class="primary-button">
+                  <i class="fa-solid fa-paper-plane"></i> Submit domain
+                </button>
+              </div>
+            </form>
+            <div id="submit-domain-result" class="admin-result hidden"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="/js/domain-submit.js"></script>
+  </body>
+</html>
