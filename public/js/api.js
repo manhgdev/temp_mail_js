@@ -1,11 +1,10 @@
 import CONFIG from './config.js';
+import { getLanguage, initI18n, t } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const elements = {
   emailInput: $('addr'),
-  emailTable: $('emails')?.querySelector('tbody'),
-  emailTableContainer: $('emails')?.closest('.table-container'),
-  emailResponsive: $('emails-responsive'),
+  emailList: $('emails-list'),
   loadingSpinner: $('loading-spinner'),
   errorMessage: $('error-message'),
   autoRefreshCheckbox: $('auto-refresh'),
@@ -37,6 +36,10 @@ const RANDOM_DOMAIN_VALUE = '__random__';
 const getStored = (key) => localStorage.getItem(key);
 const setStored = (key, value) => localStorage.setItem(key, value);
 const removeStored = (key) => localStorage.removeItem(key);
+const bootState = window.__TEMPMAIL_BOOT__ || {};
+const setSessionTimerVisibility = (visible) => {
+  elements.sessionTimer?.classList.toggle('is-hidden', !visible);
+};
 
 let currentEmail = getStored(CONFIG.EMAIL_KEY) || '';
 let mails = [];
@@ -46,6 +49,25 @@ let autoRefreshTimer = null;
 let countdownTimer = null;
 let availableDomains = [];
 let allowDevMail = false;
+let currentStatus = 'OFFLINE';
+let initialInboxPromise = bootState.initialInboxPromise || null;
+
+function resetActiveInboxState() {
+  mails = [];
+  filteredMails = [];
+  selectedMail = null;
+  currentEmail = '';
+  initialInboxPromise = null;
+  closeModal();
+  removeStored(CONFIG.EMAIL_KEY);
+  removeStored(CONFIG.SESSION_START_KEY);
+  if (elements.emailInput) {
+    elements.emailInput.value = '';
+  }
+  stopSessionTimer();
+  setSessionTimerVisibility(false);
+  renderInbox();
+}
 
 function showError(message = '') {
   if (!elements.errorMessage) {
@@ -70,21 +92,62 @@ function toast(message, type = 'info', duration = CONFIG.TOAST_DURATION) {
     <div class="toast-progress" style="animation-duration:${duration}ms"></div>
   `;
 
-  el.querySelector('.toast-close')?.addEventListener('click', () => el.remove());
-  elements.toastContainer.appendChild(el);
+  const progress = el.querySelector('.toast-progress');
+  let dismissTimer = null;
+  let startedAt = Date.now();
+  let remaining = duration;
+  let closed = false;
 
-  const timer = setTimeout(() => {
+  const removeToast = () => {
+    if (closed) {
+      return;
+    }
+
+    closed = true;
+    clearTimeout(dismissTimer);
     el.classList.add('toast-exit');
     setTimeout(() => el.remove(), 300);
-  }, duration);
+  };
 
-  el.addEventListener('mouseenter', () => clearTimeout(timer));
+  const scheduleDismiss = () => {
+    clearTimeout(dismissTimer);
+    startedAt = Date.now();
+    dismissTimer = setTimeout(removeToast, remaining);
+  };
+
+  el.querySelector('.toast-close')?.addEventListener('click', removeToast);
+  elements.toastContainer.appendChild(el);
+
+  scheduleDismiss();
+
+  el.addEventListener('mouseenter', () => {
+    clearTimeout(dismissTimer);
+    remaining = Math.max(0, remaining - (Date.now() - startedAt));
+    if (progress) {
+      progress.style.animationPlayState = 'paused';
+    }
+  });
+
+  el.addEventListener('mouseleave', () => {
+    if (closed) {
+      return;
+    }
+
+    if (progress) {
+      progress.style.animationPlayState = 'running';
+    }
+
+    scheduleDismiss();
+  });
 }
 
 function updateSystemStatus(status) {
+  currentStatus = status;
   elements.statusLed.classList.remove('online', 'offline', 'loading');
   elements.statusLed.classList.add(CONFIG.STATUS[status].class);
-  elements.statusText.textContent = CONFIG.STATUS[status].text;
+  const key =
+    status === 'ONLINE' ? 'status.online' : status === 'LOADING' ? 'status.loading' : 'status.offline';
+  elements.statusText.textContent = t(key);
 }
 
 const setOnline = () => updateSystemStatus('ONLINE');
@@ -103,7 +166,8 @@ function setLoading(isLoading) {
 function updateEmailCount(count) {
   elements.countBadge.textContent = count;
   elements.deleteAllBtn.style.display = count > 0 ? '' : 'none';
-  document.title = count > 0 ? `(${count}) TempMail — Disposable Email` : 'TempMail — Disposable Email';
+  const baseTitle = t('page.home.title');
+  document.title = count > 0 ? `(${count}) ${baseTitle}` : baseTitle;
 }
 
 function formatSessionTime() {
@@ -119,12 +183,19 @@ function startSessionTimer() {
     setStored(CONFIG.SESSION_START_KEY, Date.now().toString());
   }
 
-  elements.sessionTimer.style.display = '';
+  setSessionTimerVisibility(true);
   clearInterval(countdownTimer);
   countdownTimer = setInterval(() => {
     elements.sessionTimerText.textContent = formatSessionTime();
   }, 1000);
   elements.sessionTimerText.textContent = formatSessionTime();
+}
+
+function stopSessionTimer() {
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+  setSessionTimerVisibility(false);
+  elements.sessionTimerText.textContent = '00:00';
 }
 
 function escapeHTML(str) {
@@ -142,6 +213,79 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
+function stripHtml(value = '') {
+  return String(value)
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ');
+}
+
+function getMailPreview(mail) {
+  const source = mail.body_text || mail.preview || t('mail.no_preview');
+  return stripHtml(source).replace(/\s+/g, ' ').trim() || t('mail.no_preview');
+}
+
+function truncateText(value, maxLength = 160) {
+  const normalized = String(value || '').trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+function syncSelectedMailState() {
+  if (!selectedMail) {
+    return;
+  }
+
+  const nextSelectedMail = mails.find((mail) => mail.id === selectedMail.id) || null;
+  selectedMail = nextSelectedMail;
+}
+
+function getSenderInitial(from = '') {
+  const candidate = String(from || '').trim().charAt(0);
+  return candidate ? candidate.toUpperCase() : '?';
+}
+
+function formatRelativeTime(value) {
+  if (!value) {
+    return '-';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const secondsDiff = Math.round((date.getTime() - Date.now()) / 1000);
+  const absSeconds = Math.abs(secondsDiff);
+  const locale = getLanguage() === 'vi' ? 'vi' : 'en';
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+
+  if (absSeconds < 45) {
+    return rtf.format(0, 'second');
+  }
+
+  const ranges = [
+    ['minute', 60],
+    ['hour', 3600],
+    ['day', 86400]
+  ];
+
+  for (const [unit, size] of ranges) {
+    if (absSeconds < size * (unit === 'day' ? 7 : 24)) {
+      return rtf.format(Math.round(secondsDiff / size), unit);
+    }
+  }
+
+  return date.toLocaleDateString(locale, {
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
 function applyFilter() {
   const query = elements.emailSearch.value.trim().toLowerCase();
   filteredMails = mails.filter((mail) => {
@@ -149,7 +293,7 @@ function applyFilter() {
       return true;
     }
 
-    return [mail.from, mail.subject, mail.preview].some((value) =>
+    return [mail.from, mail.subject, getMailPreview(mail)].some((value) =>
       String(value || '')
         .toLowerCase()
         .includes(query)
@@ -157,99 +301,118 @@ function applyFilter() {
   });
 }
 
-function renderResponsiveCards() {
-  if (!elements.emailResponsive) {
+function renderInboxList() {
+  if (!elements.emailList) {
     return;
   }
 
-  elements.emailResponsive.innerHTML = '';
+  elements.emailList.innerHTML = '';
   if (filteredMails.length === 0) {
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  filteredMails.forEach((mail, index) => {
-    const card = document.createElement('article');
-    card.className = 'email-card';
-    card.innerHTML = `
-      <div class="email-card-row"><strong>#</strong><span>${index + 1}</span></div>
-      <div class="email-card-row"><strong>From</strong><span>${escapeHTML(mail.from || '-')}</span></div>
-      <div class="email-card-row"><strong>Subject</strong><span>${escapeHTML(mail.subject || '(no subject)')}</span></div>
-      <div class="email-card-row"><strong>Date</strong><span>${escapeHTML(formatDate(mail.created_at))}</span></div>
-      <div class="email-card-actions">
-        <button class="ghost-button" data-action="open" data-id="${mail.id}"><i class="fa-solid fa-eye"></i></button>
-        <button class="ghost-button" data-action="delete" data-id="${mail.id}"><i class="fa-solid fa-trash"></i></button>
+    elements.emailList.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-inbox"></i>
+        <h2>${mails.length === 0 ? escapeHTML(t('mail.empty')) : escapeHTML(t('mail.search_empty'))}</h2>
+        <p>${mails.length === 0 ? escapeHTML(t('mail.empty_hint')) : escapeHTML(t('mail.search_empty_hint'))}</p>
       </div>
     `;
-    fragment.appendChild(card);
-  });
-
-  elements.emailResponsive.appendChild(fragment);
-}
-
-function alignInboxTableForMobile() {
-  const container = elements.emailTableContainer;
-  if (!container || window.innerWidth > 820) {
-    return;
-  }
-
-  const maxScrollLeft = container.scrollWidth - container.clientWidth;
-  if (maxScrollLeft <= 0) {
-    container.scrollLeft = 0;
-    return;
-  }
-
-  container.scrollLeft = Math.round(maxScrollLeft / 2);
-}
-
-function renderTable() {
-  applyFilter();
-  updateEmailCount(mails.length);
-  elements.emailTable.innerHTML = '';
-
-  if (filteredMails.length === 0) {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td colspan="5" class="empty-inbox">
-        <div class="empty-state">
-          <i class="fa-solid fa-inbox"></i>
-          <h3>${mails.length === 0 ? 'Inbox is empty' : 'No matching emails'}</h3>
-          <p>${mails.length === 0 ? 'Generate an address or wait for a new email.' : 'Try another search term.'}</p>
-        </div>
-      </td>
-    `;
-    elements.emailTable.appendChild(row);
-    renderResponsiveCards();
-    alignInboxTableForMobile();
     return;
   }
 
   const fragment = document.createDocumentFragment();
-
   filteredMails.forEach((mail, index) => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${index + 1}</td>
-      <td data-open-id="${mail.id}">${escapeHTML(mail.from || '-')}</td>
-      <td data-open-id="${mail.id}">${escapeHTML(mail.subject || '(no subject)')}</td>
-      <td title="${escapeHTML(formatDate(mail.created_at))}">${escapeHTML(formatDate(mail.created_at))}</td>
-      <td>
-        <div class="table-actions">
-          <button class="icon-button" data-action="open" data-id="${mail.id}" title="Open">
-            <i class="fa-solid fa-eye"></i>
-          </button>
-          <button class="icon-button danger" data-action="delete" data-id="${mail.id}" title="Remove from list">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+    const item = document.createElement('article');
+    const preview = truncateText(getMailPreview(mail));
+    const sender = mail.from || '-';
+    const subject = mail.subject || t('mail.no_subject');
+    const relativeTime = formatRelativeTime(mail.created_at);
+    const fullDate = formatDate(mail.created_at);
+    const isSelected = selectedMail?.id === mail.id;
+
+    item.className = `mail-item${index === 0 ? ' row-new' : ''}${isSelected ? ' is-selected' : ''}`;
+    item.dataset.openId = mail.id;
+    item.tabIndex = 0;
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-label', `${sender} ${subject}`);
+    item.innerHTML = `
+      <div class="mail-item-accent" aria-hidden="true"></div>
+      <div class="mail-item-avatar" aria-hidden="true">${escapeHTML(getSenderInitial(sender))}</div>
+      <div class="mail-item-body">
+        <div class="mail-item-topline">
+          <p class="mail-item-sender notranslate" translate="no" title="${escapeHTML(sender)}">${escapeHTML(sender)}</p>
         </div>
-      </td>
+        <h3 class="mail-item-subject notranslate" translate="no" title="${escapeHTML(subject)}">${escapeHTML(subject)}</h3>
+        <p class="mail-item-preview notranslate" translate="no">${escapeHTML(preview)}</p>
+      </div>
+      <div class="mail-item-side">
+        <div class="mail-item-time">
+          <span class="mail-item-time-value" title="${escapeHTML(fullDate)}">${escapeHTML(relativeTime)}</span>
+        </div>
+        <p class="mail-item-selected-hint" aria-hidden="${isSelected ? 'false' : 'true'}">${escapeHTML(t('mail.selected_hint'))}</p>
+        <button
+          class="mail-item-delete"
+          data-action="delete"
+          data-id="${mail.id}"
+          title="Remove from list"
+          aria-label="Remove from list"
+        >
+          <span>${escapeHTML(t('mail.delete_hint'))}</span>
+        </button>
+      </div>
     `;
-    fragment.appendChild(row);
+    fragment.appendChild(item);
   });
 
-  elements.emailTable.appendChild(fragment);
-  renderResponsiveCards();
-  alignInboxTableForMobile();
+  elements.emailList.appendChild(fragment);
+}
+
+function renderInbox() {
+  syncSelectedMailState();
+  applyFilter();
+  updateEmailCount(mails.length);
+  renderInboxList();
+}
+
+const hasHtmlDocument = (value = '') => /<(?:!doctype|html|body)\b/i.test(String(value));
+
+async function renderMailBody(container, mail) {
+  const htmlViewerUrl = `/mail/${encodeURIComponent(mail.id)}/html`;
+  const fallbackText = String(mail.body_text || mail.preview || t('mail.no_preview'));
+
+  try {
+    const response = await fetch(htmlViewerUrl);
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const html = await response.text();
+    if (hasHtmlDocument(html)) {
+      container.innerHTML = `<iframe class="email-body-frame notranslate" translate="no" src="${htmlViewerUrl}" title="${escapeHTML(mail.subject || '(no subject)')}"></iframe>`;
+      return;
+    }
+
+    container.innerHTML = `<div class="email-body-inline-html notranslate" translate="no">${html}</div>`;
+    return;
+  } catch {}
+
+  container.innerHTML = `<pre class="email-body-text notranslate" translate="no">${escapeHTML(fallbackText)}</pre>`;
+}
+
+async function fileToAttachmentPayload(file) {
+  const buffer = await file.arrayBuffer();
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return {
+    filename: file.name,
+    contentType: file.type || 'application/octet-stream',
+    size: file.size,
+    content: btoa(binary)
+  };
 }
 
 function renderMailModal(mail) {
@@ -258,7 +421,7 @@ function renderMailModal(mail) {
     existing.remove();
   }
 
-  const bodyText = String(mail.body_text || mail.preview || 'No preview available.');
+  const bodyText = String(mail.body_text || mail.preview || t('mail.no_preview'));
   const htmlViewerUrl = `/mail/${encodeURIComponent(mail.id)}/html`;
   const attachmentItems = (mail.attachments || [])
     .map(
@@ -277,26 +440,33 @@ function renderMailModal(mail) {
     <div class="email-modal-content">
       <div class="modal-header">
         <h2>${escapeHTML(mail.subject || '(no subject)')}</h2>
-        <button class="close-btn" aria-label="Close">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+        <div class="modal-header-actions">
+          <a
+            class="modal-header-link"
+            href="${htmlViewerUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="${escapeHTML(t('button.open_html'))}"
+            title="${escapeHTML(t('button.open_html'))}"
+          >
+            <span class="modal-header-link-icon" aria-hidden="true">↗</span>
+          </a>
+          <button class="close-btn" aria-label="${escapeHTML(t('shortcut.close_button'))}">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
       </div>
       <div class="email-meta">
-        <p><strong>From:</strong> ${escapeHTML(mail.from || '-')}</p>
-        <p><strong>To:</strong> ${escapeHTML(mail.to || '-')}</p>
-        <p><strong>Date:</strong> ${escapeHTML(formatDate(mail.created_at))}</p>
+        <p><strong>${escapeHTML(t('mail.meta.from'))}</strong> <span class="notranslate" translate="no">${escapeHTML(mail.from || '-')}</span></p>
+        <p><strong>${escapeHTML(t('mail.meta.to'))}</strong> <span class="notranslate" translate="no">${escapeHTML(mail.to || '-')}</span></p>
+        <p><strong>${escapeHTML(t('mail.meta.date'))}</strong> ${escapeHTML(formatDate(mail.created_at))}</p>
       </div>
-      <div class="email-body">
-        <pre class="email-body-text">${escapeHTML(bodyText)}</pre>
-      </div>
-      <div class="modal-actions mail-modal-actions">
-        <a class="primary-button" href="${htmlViewerUrl}" target="_blank" rel="noopener noreferrer">
-          <i class="fa-solid fa-up-right-from-square"></i> Open HTML
-        </a>
+      <div class="email-body" data-mail-body>
+        <div class="email-body-loading">${escapeHTML(t('status.loading'))}</div>
       </div>
       <div class="attachments">
-        <h3>Attachments</h3>
-        ${attachmentItems ? `<div class="attachment-list">${attachmentItems}</div>` : '<p>No attachments.</p>'}
+        <h3>${escapeHTML(t('mail.attachments'))}</h3>
+        ${attachmentItems ? `<div class="attachment-list">${attachmentItems}</div>` : `<p>${escapeHTML(t('mail.no_attachments'))}</p>`}
       </div>
     </div>
   `;
@@ -309,6 +479,7 @@ function renderMailModal(mail) {
 
   modal.querySelector('.close-btn')?.addEventListener('click', () => modal.remove());
   document.body.appendChild(modal);
+  renderMailBody(modal.querySelector('[data-mail-body]'), mail);
 }
 
 function closeModal() {
@@ -317,7 +488,7 @@ function closeModal() {
 
 function renderSendTestMailModal() {
   if (!allowDevMail) {
-    toast('Send Test Mail is available in development only.', 'warning');
+    toast(t('toast.dev_only'), 'warning');
     return;
   }
 
@@ -332,32 +503,37 @@ function renderSendTestMailModal() {
   modal.innerHTML = `
     <div class="email-modal-content">
       <div class="modal-header">
-        <h2>Send Test Mail</h2>
+        <h2>${escapeHTML(t('dev_modal.title'))}</h2>
         <button class="close-btn" aria-label="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
       <form class="dev-mail-form" id="dev-mail-form">
-        <label>
-          From
+        <label class="dev-mail-field">
+          ${escapeHTML(t('dev_modal.from'))}
           <input name="from" type="email" value="dev-sender@${escapeHTML(activeDomain)}" required />
         </label>
-        <label>
-          To
+        <label class="dev-mail-field">
+          ${escapeHTML(t('dev_modal.to'))}
           <input name="to" type="email" value="${escapeHTML(currentEmail || '')}" required />
         </label>
-        <label>
-          Subject
-          <input name="subject" type="text" value="UI test mail" required />
+        <label class="dev-mail-field dev-mail-field-span-2">
+          ${escapeHTML(t('dev_modal.subject'))}
+          <input name="subject" type="text" value="${escapeHTML(t('dev_modal.subject_default'))}" required />
         </label>
-        <label>
-          Message
-          <textarea name="body" required>This is a dev test mail from the UI.</textarea>
+        <label class="dev-mail-field dev-mail-field-span-2">
+          ${escapeHTML(t('dev_modal.message'))}
+          <textarea name="body" required>${escapeHTML(t('dev_modal.body_default'))}</textarea>
         </label>
-        <div class="modal-actions dev-mail-actions">
-          <button class="ghost-button" type="button" id="dev-mail-cancel">Cancel</button>
+        <label class="dev-mail-field dev-mail-field-span-2">
+          ${escapeHTML(t('dev_modal.attachments'))}
+          <input name="attachments" type="file" multiple />
+          <span class="dev-mail-help">${escapeHTML(t('dev_modal.attachments_help'))}</span>
+        </label>
+        <div class="modal-actions dev-mail-actions dev-mail-field dev-mail-field-span-2">
+          <button class="ghost-button" type="button" id="dev-mail-cancel">${escapeHTML(t('dev_modal.cancel'))}</button>
           <button class="primary-button dev-button" type="submit">
-            <i class="fa-solid fa-paper-plane"></i> Send
+            <i class="fa-solid fa-paper-plane"></i> ${escapeHTML(t('dev_modal.send'))}
           </button>
         </div>
       </form>
@@ -376,6 +552,7 @@ function renderSendTestMailModal() {
     event.preventDefault();
 
     const form = new FormData(event.currentTarget);
+    const files = Array.from(form.getAll('attachments')).filter((file) => file instanceof File && file.size > 0);
 
     try {
       setLoading(true);
@@ -383,13 +560,14 @@ function renderSendTestMailModal() {
         from: form.get('from'),
         to: form.get('to'),
         subject: form.get('subject'),
-        body: form.get('body')
+        body: form.get('body'),
+        attachments: await Promise.all(files.map(fileToAttachmentPayload))
       });
       closeModal();
-      toast('Test mail sent to inbox.', 'success');
+      toast(t('toast.test_mail_sent'), 'success');
       await refreshMail();
     } catch (error) {
-      toast(`Failed to send test mail: ${error.message}`, 'error');
+      toast(t('toast.test_mail_failed', { message: error.message }), 'error');
     } finally {
       setLoading(false);
     }
@@ -467,6 +645,20 @@ async function genEmail() {
       throw new Error('No active domains configured');
     }
 
+    const previousEmail = currentEmail;
+    if (previousEmail) {
+      await deleteJson(`/mail/${encodeURIComponent(previousEmail)}`);
+      mails = [];
+      selectedMail = null;
+      currentEmail = '';
+      closeModal();
+      removeStored(CONFIG.EMAIL_KEY);
+      removeStored(CONFIG.SESSION_START_KEY);
+      elements.emailInput.value = '';
+      stopSessionTimer();
+      renderInbox();
+    }
+
     const selectedDomain = elements.domainSelect?.value || getStored(CONFIG.DOMAIN_KEY) || '';
     const query =
       selectedDomain && selectedDomain !== RANDOM_DOMAIN_VALUE
@@ -488,12 +680,12 @@ async function genEmail() {
     showError('');
     startSessionTimer();
     setOnline();
-    toast('New email address generated!', 'success');
+    toast(t('toast.new_email'), 'success');
     await refreshMail();
   } catch (error) {
     setOffline();
-    showError(`Generate failed: ${error.message}`);
-    toast(`Failed to generate email: ${error.message}`, 'error');
+    showError(t('error.generate_failed', { message: error.message }));
+    toast(t('toast.generate_failed', { message: error.message }), 'error');
   } finally {
     setLoading(false);
   }
@@ -501,7 +693,7 @@ async function genEmail() {
 
 async function copyEmail() {
   if (!currentEmail) {
-    toast('No email address to copy', 'warning');
+    toast(t('toast.no_email_copy'), 'warning');
     return;
   }
 
@@ -514,41 +706,40 @@ async function copyEmail() {
       elements.copyIcon.className = 'fa-solid fa-copy';
     }, 1200);
   }
-  toast('Email copied to clipboard!', 'success');
+  toast(t('toast.email_copied'), 'success');
 }
 
 async function refreshMail() {
   if (!currentEmail) {
-    showError('No active inbox. Click New Address to create one.');
-    toast('No active inbox. Click New Address first.', 'warning');
+    showError(t('error.no_active_inbox'));
+    toast(t('toast.no_active_inbox'), 'warning');
     return;
   }
 
   try {
     setLoading(true);
     setLoadingStatus();
-    const data = await fetchJson(`/inbox/${encodeURIComponent(currentEmail)}`);
+    const data =
+      initialInboxPromise && currentEmail === bootState.email
+        ? await initialInboxPromise.finally(() => {
+            initialInboxPromise = null;
+          })
+        : await fetchJson(`/inbox/${encodeURIComponent(currentEmail)}`);
     mails = Array.isArray(data.mails) ? data.mails : [];
     showError('');
     setOnline();
-    renderTable();
+    renderInbox();
   } catch (error) {
     if (/not found/i.test(error.message)) {
-      mails = [];
-      selectedMail = null;
-      currentEmail = '';
-      removeStored(CONFIG.EMAIL_KEY);
-      removeStored(CONFIG.SESSION_START_KEY);
-      elements.emailInput.value = '';
-      renderTable();
-      showError('Inbox not found. Click New Address to create another one.');
-      toast('Inbox not found. Click New Address to create another one.', 'warning', CONFIG.TOAST_DURATION_LONG);
+      resetActiveInboxState();
+      showError(t('error.inbox_not_found'));
+      toast(t('toast.inbox_not_found'), 'warning', CONFIG.TOAST_DURATION_LONG);
       return;
     }
 
     setOffline();
-    showError(`Refresh failed: ${error.message}`);
-    toast(`Failed to refresh inbox: ${error.message}`, 'error');
+    showError(t('error.refresh_failed', { message: error.message }));
+    toast(t('toast.refresh_failed', { message: error.message }), 'error');
   } finally {
     setLoading(false);
   }
@@ -558,76 +749,93 @@ async function openMail(id) {
   try {
     const mail = await fetchJson(`/mail/${encodeURIComponent(id)}`);
     selectedMail = mail;
+    renderInbox();
     renderMailModal(mail);
   } catch (error) {
-    toast(`Failed to open email: ${error.message}`, 'error');
+    toast(t('toast.open_failed', { message: error.message }), 'error');
   }
 }
 
 async function removeMailFromView(id) {
   try {
-    await deleteJson(`/mail/${encodeURIComponent(id)}`);
+    await deleteJson(`/inbox/${encodeURIComponent(currentEmail)}/${encodeURIComponent(id)}`);
     mails = mails.filter((mail) => mail.id !== id);
     if (selectedMail?.id === id) {
       selectedMail = null;
       closeModal();
     }
-    renderTable();
-    toast('Email deleted.', 'success');
+    renderInbox();
+    toast(t('toast.email_deleted'), 'success');
   } catch (error) {
-    toast(`Failed to delete email: ${error.message}`, 'error');
+    if (/inbox not found/i.test(error.message)) {
+      resetActiveInboxState();
+      showError(t('error.inbox_not_found'));
+      toast(t('toast.inbox_not_found'), 'warning', CONFIG.TOAST_DURATION_LONG);
+      return;
+    }
+
+    toast(t('toast.delete_email_failed', { message: error.message }), 'error');
   }
 }
 
 async function deleteAllEmails() {
   if (!currentEmail) {
-    toast('No inbox to clear.', 'warning');
+    toast(t('toast.no_inbox_clear'), 'warning');
     return;
   }
 
   try {
-    await deleteJson(`/inbox/${encodeURIComponent(currentEmail)}`);
+    await deleteJson(`/inbox/${encodeURIComponent(currentEmail)}/mails`);
     mails = [];
     selectedMail = null;
     closeModal();
-    removeStored(CONFIG.EMAIL_KEY);
-    removeStored(CONFIG.SESSION_START_KEY);
-    currentEmail = '';
-    elements.emailInput.value = '';
-    renderTable();
-    showError('Inbox deleted. Click New Address to create another one.');
-    toast('Inbox deleted.', 'success');
+    renderInbox();
+    showError('');
+    toast(t('toast.inbox_cleared'), 'success');
   } catch (error) {
-    toast(`Failed to clear inbox: ${error.message}`, 'error');
+    if (/inbox not found/i.test(error.message)) {
+      resetActiveInboxState();
+      showError(t('error.inbox_not_found'));
+      toast(t('toast.inbox_not_found'), 'warning', CONFIG.TOAST_DURATION_LONG);
+      return;
+    }
+
+    toast(t('toast.clear_failed', { message: error.message }), 'error');
   }
 }
 
 function setupAutoRefresh() {
+  const renderCountdownValue = (seconds) => {
+    elements.countdown.textContent = `${seconds}s`;
+  };
+
   const apply = () => {
     clearInterval(autoRefreshTimer);
+    autoRefreshTimer = null;
+
+    const seconds = Number(elements.refreshIntervalSelect.value || 30);
 
     if (!elements.autoRefreshCheckbox.checked) {
-      elements.countdown.textContent = '';
+      renderCountdownValue(seconds);
       elements.countdownBarContainer.classList.remove('active');
       return;
     }
 
-    const seconds = Number(elements.refreshIntervalSelect.value || 30);
     let remaining = seconds;
-    elements.countdown.textContent = `${remaining}s`;
+    renderCountdownValue(remaining);
     elements.countdownBarContainer.classList.add('active');
     elements.countdownBar.style.transition = 'none';
     elements.countdownBar.style.width = '100%';
 
     autoRefreshTimer = window.setInterval(() => {
       remaining -= 1;
-      elements.countdown.textContent = `${Math.max(remaining, 0)}s`;
+      renderCountdownValue(Math.max(remaining, 0));
       elements.countdownBar.style.transition = 'width 1s linear';
       elements.countdownBar.style.width = `${(Math.max(remaining, 0) / seconds) * 100}%`;
 
       if (remaining <= 0) {
         remaining = seconds;
-        elements.countdown.textContent = `${remaining}s`;
+        renderCountdownValue(remaining);
         elements.countdownBar.style.transition = 'none';
         elements.countdownBar.style.width = '100%';
         refreshMail();
@@ -643,8 +851,8 @@ function setupAutoRefresh() {
     setStored(CONFIG.AUTO_REFRESH_KEY, String(elements.autoRefreshCheckbox.checked));
     toast(
       elements.autoRefreshCheckbox.checked
-        ? `Auto-refresh enabled (${elements.refreshIntervalSelect.value}s)`
-        : 'Auto-refresh disabled',
+        ? t('toast.auto_enabled', { seconds: elements.refreshIntervalSelect.value })
+        : t('toast.auto_disabled'),
       elements.autoRefreshCheckbox.checked ? 'success' : 'info'
     );
     apply();
@@ -653,7 +861,7 @@ function setupAutoRefresh() {
   elements.refreshIntervalSelect.addEventListener('change', () => {
     setStored(CONFIG.REFRESH_INTERVAL_KEY, elements.refreshIntervalSelect.value);
     if (elements.autoRefreshCheckbox.checked) {
-      toast(`Auto-refresh interval set to ${elements.refreshIntervalSelect.value}s`, 'info');
+      toast(t('toast.auto_interval', { seconds: elements.refreshIntervalSelect.value }), 'info');
     }
     apply();
   });
@@ -670,7 +878,7 @@ function debounce(fn, delay) {
 }
 
 function setupSearch() {
-  const handler = debounce(() => renderTable(), CONFIG.SEARCH_DEBOUNCE);
+  const handler = debounce(() => renderInbox(), CONFIG.SEARCH_DEBOUNCE);
   elements.emailSearch.addEventListener('input', handler);
 }
 
@@ -695,7 +903,7 @@ async function loadDomains() {
   if (availableDomains.length) {
     const randomOption = document.createElement('option');
     randomOption.value = RANDOM_DOMAIN_VALUE;
-    randomOption.textContent = 'random';
+    randomOption.textContent = t('domain.random');
     randomOption.selected = activeDomain === RANDOM_DOMAIN_VALUE;
     elements.domainSelect.appendChild(randomOption);
   }
@@ -726,10 +934,11 @@ async function loadDomains() {
   });
 }
 
-function setupTableActions() {
+function setupInboxActions() {
   const clickHandler = (event) => {
     const actionButton = event.target.closest('[data-action]');
     if (actionButton) {
+      event.stopPropagation();
       const { action, id } = actionButton.dataset;
       if (action === 'open') {
         openMail(id);
@@ -742,14 +951,30 @@ function setupTableActions() {
       return;
     }
 
-    const openCell = event.target.closest('td[data-open-id]');
-    if (openCell) {
-      openMail(openCell.dataset.openId);
+    const item = event.target.closest('[data-open-id]');
+    if (item) {
+      openMail(item.dataset.openId);
     }
   };
 
-  elements.emailTable.addEventListener('click', clickHandler);
-  elements.emailResponsive?.addEventListener('click', clickHandler);
+  const keyHandler = (event) => {
+    if (event.target.closest('[data-action]')) {
+      return;
+    }
+
+    const item = event.target.closest('[data-open-id]');
+    if (!item) {
+      return;
+    }
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openMail(item.dataset.openId);
+    }
+  };
+
+  elements.emailList?.addEventListener('click', clickHandler);
+  elements.emailList?.addEventListener('keydown', keyHandler);
 }
 
 function hideShortcuts() {
@@ -762,17 +987,17 @@ function showShortcuts() {
   const overlay = document.createElement('div');
   overlay.className = 'shortcuts-overlay';
   overlay.innerHTML = `
-    <div class="shortcuts-content" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
-      <h3><i class="fa-solid fa-keyboard"></i> Keyboard shortcuts</h3>
+    <div class="shortcuts-content" role="dialog" aria-modal="true" aria-label="${escapeHTML(t('shortcut.title'))}">
+      <h2><i class="fa-solid fa-keyboard"></i> ${escapeHTML(t('shortcut.title'))}</h2>
       <div class="shortcut-list">
-        <div class="shortcut-item"><span>Generate new address</span><kbd>N</kbd></div>
-        <div class="shortcut-item"><span>Refresh inbox</span><kbd>R</kbd></div>
-        <div class="shortcut-item"><span>Focus search</span><kbd>/</kbd></div>
-        <div class="shortcut-item"><span>Copy current email</span><kbd>C</kbd></div>
-        <div class="shortcut-item"><span>Show shortcuts</span><kbd>?</kbd></div>
-        <div class="shortcut-item"><span>Close dialog</span><kbd>Esc</kbd></div>
+        <div class="shortcut-item"><span>${escapeHTML(t('shortcut.generate'))}</span><kbd>N</kbd></div>
+        <div class="shortcut-item"><span>${escapeHTML(t('shortcut.refresh'))}</span><kbd>R</kbd></div>
+        <div class="shortcut-item"><span>${escapeHTML(t('shortcut.search'))}</span><kbd>/</kbd></div>
+        <div class="shortcut-item"><span>${escapeHTML(t('shortcut.copy'))}</span><kbd>C</kbd></div>
+        <div class="shortcut-item"><span>${escapeHTML(t('shortcut.show'))}</span><kbd>?</kbd></div>
+        <div class="shortcut-item"><span>${escapeHTML(t('shortcut.close'))}</span><kbd>Esc</kbd></div>
       </div>
-      <button class="primary-button shortcut-close" type="button">Close</button>
+      <button class="primary-button shortcut-close" type="button">${escapeHTML(t('shortcut.close_button'))}</button>
     </div>
   `;
 
@@ -834,40 +1059,84 @@ function setupKeyboardShortcuts() {
   });
 }
 
-function init() {
+function scheduleNonCritical(task) {
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(task, { timeout: 1200 });
+    return;
+  }
+
+  window.setTimeout(task, 250);
+}
+
+async function init() {
+  await initI18n(document);
+  setSessionTimerVisibility(Boolean(currentEmail));
   setupDomainSelector();
   setupAutoRefresh();
   setupSearch();
-  setupTableActions();
+  setupInboxActions();
   setupKeyboardShortcuts();
+  elements.emailInput.value = currentEmail;
 
-  loadDomains()
-    .then(() => {
-      elements.emailInput.value = currentEmail;
-      if (currentEmail && availableDomains.length) {
-        const currentDomain = currentEmail.split('@')[1] || '';
-        const storedDomain = getStored(CONFIG.DOMAIN_KEY) || '';
-        if (storedDomain === RANDOM_DOMAIN_VALUE) {
-          elements.domainSelect.value = RANDOM_DOMAIN_VALUE;
-        } else if (currentDomain && availableDomains.includes(currentDomain)) {
-          elements.domainSelect.value = currentDomain;
-          setStored(CONFIG.DOMAIN_KEY, currentDomain);
+  if (currentEmail) {
+    startSessionTimer();
+    refreshMail();
+  }
+
+  const loadDomainsTask = () => {
+    loadDomains()
+      .then(() => {
+        if (currentEmail && availableDomains.length) {
+          const currentDomain = currentEmail.split('@')[1] || '';
+          const storedDomain = getStored(CONFIG.DOMAIN_KEY) || '';
+          if (storedDomain === RANDOM_DOMAIN_VALUE) {
+            elements.domainSelect.value = RANDOM_DOMAIN_VALUE;
+          } else if (currentDomain && availableDomains.includes(currentDomain)) {
+            elements.domainSelect.value = currentDomain;
+            setStored(CONFIG.DOMAIN_KEY, currentDomain);
+          } else {
+            elements.domainSelect.value = RANDOM_DOMAIN_VALUE;
+          }
+        } else if (availableDomains.length) {
+          genEmail();
         } else {
-          elements.domainSelect.value = RANDOM_DOMAIN_VALUE;
+          showError(t('error.no_domains'));
+          toast(t('toast.no_domains'), 'error');
         }
-        startSessionTimer();
-        refreshMail();
-      } else if (availableDomains.length) {
-        genEmail();
-      } else {
-        showError('No active domains available. Add active domains in Firebase for production or DOMAINS in .env for local development.');
-        toast('No active domains available.', 'error');
+      })
+      .catch((error) => {
+        showError(t('error.load_domains', { message: error.message }));
+        toast(t('toast.load_domains', { message: error.message }), 'error');
+      });
+  };
+
+  if (currentEmail) {
+    if (document.readyState === 'complete') {
+      scheduleNonCritical(loadDomainsTask);
+    } else {
+      window.addEventListener(
+        'load',
+        () => {
+          scheduleNonCritical(loadDomainsTask);
+        },
+        { once: true }
+      );
+    }
+  } else {
+    loadDomainsTask();
+  }
+
+  window.addEventListener('tempmail:languagechange', () => {
+    updateSystemStatus(currentStatus);
+    updateEmailCount(mails.length);
+    if (availableDomains.length && elements.domainSelect.value === RANDOM_DOMAIN_VALUE) {
+      const randomOption = elements.domainSelect.querySelector(`option[value="${RANDOM_DOMAIN_VALUE}"]`);
+      if (randomOption) {
+        randomOption.textContent = t('domain.random');
       }
-    })
-    .catch((error) => {
-      showError(`Failed to load domains: ${error.message}`);
-      toast(`Failed to load domains: ${error.message}`, 'error');
-    });
+    }
+    renderInbox();
+  });
 
   window.addEventListener('storage', (event) => {
     if (![CONFIG.EMAIL_KEY, CONFIG.SESSION_START_KEY, CONFIG.DOMAIN_KEY].includes(event.key)) {
@@ -898,7 +1167,7 @@ function init() {
 
     mails = [];
     selectedMail = null;
-    renderTable();
+    renderInbox();
   });
 }
 
@@ -910,4 +1179,6 @@ window.showEmail = openMail;
 window.showShortcuts = showShortcuts;
 window.showSendTestMailModal = renderSendTestMailModal;
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+  void init();
+});

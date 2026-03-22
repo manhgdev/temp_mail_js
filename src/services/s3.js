@@ -1,4 +1,4 @@
-import { GetObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { DeleteObjectsCommand, GetObjectCommand, S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { ENV } from '../config/env.js';
 
 const s3Client = new S3Client({
@@ -35,6 +35,31 @@ export const getObject = async (key) =>
       Key: key
     })
   );
+
+export const getObjectText = async (key) => {
+  const response = await getObject(key);
+  return response.Body ? response.Body.transformToString() : '';
+};
+
+export const deleteFiles = async (keys = []) => {
+  const uniqueKeys = [...new Set(keys.filter(Boolean))];
+  if (!uniqueKeys.length) {
+    return;
+  }
+
+  for (let index = 0; index < uniqueKeys.length; index += 1000) {
+    const chunk = uniqueKeys.slice(index, index + 1000);
+    await s3Client.send(
+      new DeleteObjectsCommand({
+        Bucket: ENV.S3_BUCKET,
+        Delete: {
+          Objects: chunk.map((key) => ({ Key: key })),
+          Quiet: true
+        }
+      })
+    );
+  }
+};
 
 export const extractObjectKeyFromUrl = (url) => {
   if (!url) {

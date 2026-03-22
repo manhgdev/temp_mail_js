@@ -3,14 +3,16 @@ import { createReadStream } from 'node:fs';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createBrotliCompress, createGzip } from 'node:zlib';
 import { inboxExists } from '../repositories/mail.repo.js';
 import {
   extractObjectKeyFromUrl,
   getObject,
 } from '../services/s3.js';
 import {
-  deleteInboxByEmail,
-  deleteMailById,
+  deleteInboxAllByEmail,
+  deleteInboxById,
+  deleteMailByEmail,
   fetchInboxMails,
   fetchMailById,
   generateInboxEmail
@@ -60,8 +62,56 @@ const contentTypes = new Map([
   ['.png', 'image/png'],
   ['.jpg', 'image/jpeg'],
   ['.jpeg', 'image/jpeg'],
-  ['.ico', 'image/x-icon']
+  ['.ico', 'image/x-icon'],
+  ['.woff2', 'font/woff2']
 ]);
+
+const compressibleExtensions = new Set([
+  '.css',
+  '.html',
+  '.js',
+  '.json',
+  '.svg',
+  '.txt',
+  '.xml'
+]);
+
+const getStaticCacheControl = (filePath, extension) => {
+  if (extension === '.html') {
+    return 'no-cache';
+  }
+
+  if (
+    filePath.includes(`${path.sep}vendor${path.sep}fontawesome${path.sep}`) ||
+    extension === '.woff2' ||
+    extension === '.css' ||
+    extension === '.js'
+  ) {
+    return 'public, max-age=31536000, immutable';
+  }
+
+  if (compressibleExtensions.has(extension)) {
+    return 'public, max-age=2592000, stale-while-revalidate=86400';
+  }
+
+  return 'public, max-age=86400';
+};
+
+const getAcceptedEncoding = (request, extension) => {
+  if (!compressibleExtensions.has(extension)) {
+    return '';
+  }
+
+  const acceptEncoding = String(request.headers['accept-encoding'] || '');
+  if (acceptEncoding.includes('br')) {
+    return 'br';
+  }
+  if (acceptEncoding.includes('gzip')) {
+    return 'gzip';
+  }
+
+  return '';
+};
 
 const sendJson = (response, status, data) => {
   response.writeHead(status, {
@@ -70,13 +120,23 @@ const sendJson = (response, status, data) => {
   response.end(JSON.stringify(data));
 };
 
-const readJsonBody = (request) =>
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const looksLikeHtml = (value = '') => /<[a-z][\s\S]*>/i.test(String(value));
+
+const readJsonBody = (request, maxBytes = 1024 * 32) =>
   new Promise((resolve, reject) => {
     let body = '';
 
     request.on('data', (chunk) => {
       body += chunk;
-      if (body.length > 1024 * 32) {
+      if (body.length > maxBytes) {
         reject(new Error('Request body too large'));
         request.destroy();
       }
@@ -98,12 +158,54 @@ const readJsonBody = (request) =>
     request.on('error', reject);
   });
 
-const serveFile = (response, filePath) => {
+const serveFile = async (request, response, filePath) => {
   const extension = path.extname(filePath).toLowerCase();
-  response.writeHead(200, {
-    'content-type': contentTypes.get(extension) ?? 'application/octet-stream'
-  });
-  createReadStream(filePath).pipe(response);
+  const stats = await fs.stat(filePath);
+  const etag = `W/"${stats.size}-${stats.mtimeMs}"`;
+  const lastModified = stats.mtime.toUTCString();
+
+  if (
+    request.headers['if-none-match'] === etag ||
+    request.headers['if-modified-since'] === lastModified
+  ) {
+    response.writeHead(304, {
+      etag,
+      'last-modified': lastModified,
+      'cache-control': getStaticCacheControl(filePath, extension)
+    });
+    response.end();
+    return;
+  }
+
+  const contentEncoding = getAcceptedEncoding(request, extension);
+  const headers = {
+    'content-type': contentTypes.get(extension) ?? 'application/octet-stream',
+    'cache-control': getStaticCacheControl(filePath, extension),
+    etag,
+    'last-modified': lastModified,
+    vary: 'Accept-Encoding'
+  };
+
+  if (contentEncoding) {
+    headers['content-encoding'] = contentEncoding;
+  } else {
+    headers['content-length'] = stats.size;
+  }
+
+  response.writeHead(200, headers);
+
+  const stream = createReadStream(filePath);
+  if (contentEncoding === 'br') {
+    stream.pipe(createBrotliCompress()).pipe(response);
+    return;
+  }
+
+  if (contentEncoding === 'gzip') {
+    stream.pipe(createGzip()).pipe(response);
+    return;
+  }
+
+  stream.pipe(response);
 };
 
 const notFound = (response) => sendJson(response, 404, { error: 'Not found' });
@@ -343,7 +445,7 @@ export const createHttpServer = () =>
       }
 
       if (request.method === 'POST' && pathname === '/dev/send-test-mail') {
-        const body = await readJsonBody(request);
+        const body = await readJsonBody(request, 1024 * 1024 * 8);
         const to = String(body.to || '')
           .trim()
           .toLowerCase();
@@ -352,7 +454,29 @@ export const createHttpServer = () =>
           .trim()
           .toLowerCase();
         const subject = String(body.subject || 'UI test mail').trim();
-        const text = String(body.body || 'This is a dev test mail from the UI.');
+        const text = String(body.body || 'This is a dev test mail from the UI.').replace(/\r\n/g, '\n');
+        const html = looksLikeHtml(text)
+          ? text
+          : `<div style="white-space:pre-wrap;font-family:inherit">${escapeHtml(text)}</div>`;
+        const attachments = Array.isArray(body.attachments)
+          ? body.attachments
+              .map((attachment) => {
+                const name = String(attachment?.filename || '').trim();
+                const contentType = String(attachment?.contentType || 'application/octet-stream').trim();
+                const content = String(attachment?.content || '');
+                if (!name || !content) {
+                  return null;
+                }
+
+                return {
+                  filename: name,
+                  contentType,
+                  content: Buffer.from(content, 'base64'),
+                  size: Number(attachment?.size || 0)
+                };
+              })
+              .filter(Boolean)
+          : [];
 
         if (!to) {
           badRequest(response, 'recipient email is required');
@@ -370,8 +494,8 @@ export const createHttpServer = () =>
           from,
           subject,
           text,
-          html: `<pre>${text}</pre>`,
-          attachments: []
+          html,
+          attachments
         });
 
         sendJson(response, 200, {
@@ -382,30 +506,13 @@ export const createHttpServer = () =>
       }
 
       if (request.method === 'DELETE' && pathname.startsWith('/mail/')) {
-        const id = decodeURIComponent(pathname.replace('/mail/', '')).trim();
-        if (!id) {
-          badRequest(response, 'mail id is required');
-          return;
-        }
-
-        const deleted = await deleteMailById(id);
-        if (!deleted) {
-          sendJson(response, 404, { error: 'Mail not found' });
-          return;
-        }
-
-        sendJson(response, 200, { status: 'deleted', id });
-        return;
-      }
-
-      if (request.method === 'DELETE' && pathname.startsWith('/inbox/')) {
-        const rawEmail = decodeURIComponent(pathname.replace('/inbox/', '')).trim().toLowerCase();
+        const rawEmail = decodeURIComponent(pathname.replace('/mail/', '')).trim().toLowerCase();
         if (!rawEmail) {
           badRequest(response, 'email is required');
           return;
         }
 
-        const deletedCount = await deleteInboxByEmail(rawEmail);
+        const deletedCount = await deleteMailByEmail(rawEmail);
         if (deletedCount === null) {
           sendJson(response, 404, { error: 'Inbox not found' });
           return;
@@ -415,23 +522,70 @@ export const createHttpServer = () =>
         return;
       }
 
+      if (request.method === 'DELETE' && pathname.startsWith('/inbox/')) {
+        const deleteSingleMatch = pathname.match(/^\/inbox\/(.+)\/([^/]+)$/);
+        if (deleteSingleMatch && deleteSingleMatch[2] !== 'mails') {
+          const rawEmail = decodeURIComponent(deleteSingleMatch[1]).trim().toLowerCase();
+          const id = decodeURIComponent(deleteSingleMatch[2]).trim();
+          if (!rawEmail || !id) {
+            badRequest(response, 'email and mail id are required');
+            return;
+          }
+
+          const deleted = await deleteInboxById(rawEmail, id);
+          if (deleted === null) {
+            sendJson(response, 404, { error: 'Inbox not found' });
+            return;
+          }
+
+          if (!deleted) {
+            sendJson(response, 404, { error: 'Mail not found' });
+            return;
+          }
+
+          sendJson(response, 200, { status: 'deleted', email: rawEmail, id });
+          return;
+        }
+
+        const deleteMailsMatch = pathname.match(/^\/inbox\/(.+)\/mails$/);
+        if (deleteMailsMatch) {
+          const rawEmail = decodeURIComponent(deleteMailsMatch[1]).trim().toLowerCase();
+          if (!rawEmail) {
+            badRequest(response, 'email is required');
+            return;
+          }
+
+          const deletedCount = await deleteInboxAllByEmail(rawEmail);
+          if (deletedCount === null) {
+            sendJson(response, 404, { error: 'Inbox not found' });
+            return;
+          }
+
+          sendJson(response, 200, { status: 'deleted', email: rawEmail, deleted: deletedCount });
+          return;
+        }
+
+        notFound(response);
+        return;
+      }
+
       if (request.method !== 'GET') {
         notFound(response);
         return;
       }
 
       if (pathname === '/') {
-        serveFile(response, path.join(publicDir, 'index.html'));
+        await serveFile(request, response, path.join(publicDir, 'index.html'));
         return;
       }
 
       if (pathname === '/submit-domain') {
-        serveFile(response, path.join(publicDir, 'submit-domain.html'));
+        await serveFile(request, response, path.join(publicDir, 'submit-domain.html'));
         return;
       }
 
       if (pathname === '/admin') {
-        serveFile(response, path.join(publicDir, 'admin.html'));
+        await serveFile(request, response, path.join(publicDir, 'admin.html'));
         return;
       }
 
@@ -597,7 +751,7 @@ export const createHttpServer = () =>
       try {
         const stat = await fs.stat(filePath);
         if (stat.isFile()) {
-          serveFile(response, filePath);
+          await serveFile(request, response, filePath);
           return;
         }
       } catch {

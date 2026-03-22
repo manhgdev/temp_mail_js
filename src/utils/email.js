@@ -1,6 +1,6 @@
-import { randomBytes } from 'node:crypto';
+import { generateUsername } from './username.js';
 
 export const generateRandomEmail = (domain) => {
-  const localPart = randomBytes(8).toString('hex');
+  const localPart = generateUsername();
   return `${localPart}@${domain}`.toLowerCase();
 };

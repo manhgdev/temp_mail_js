@@ -1,5 +1,19 @@
 const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = themeToggle?.querySelector('i');
 const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+function updateThemeButton(theme) {
+    if (!themeToggle || !themeIcon) {
+        return;
+    }
+
+    const isDark = theme === 'dark';
+    themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggle.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+    themeToggle.setAttribute('aria-pressed', String(isDark));
+
+    themeIcon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+}
 
 // Apply theme with smooth transition
 function applyTheme(theme, animate = false) {
@@ -11,30 +25,28 @@ function applyTheme(theme, animate = false) {
     }
 
     document.documentElement.setAttribute('data-theme', theme);
-    if (themeToggle) {
-        themeToggle.checked = theme === 'dark';
-    }
+    updateThemeButton(theme);
 
-    // Update theme-color meta tag
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
         metaTheme.content = theme === 'dark' ? '#0F172A' : '#2563EB';
     }
 }
 
-// Toggle theme
-function toggleTheme(e) {
-    const theme = e.target.checked ? 'dark' : 'light';
-    applyTheme(theme, true);
-    localStorage.setItem('theme', theme);
+function getResolvedTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
 }
 
-// Event listener
+function toggleTheme() {
+    const nextTheme = getResolvedTheme() === 'dark' ? 'light' : 'dark';
+    applyTheme(nextTheme, true);
+    localStorage.setItem('theme', nextTheme);
+}
+
 if (themeToggle) {
-    themeToggle.addEventListener('change', toggleTheme);
+    themeToggle.addEventListener('click', toggleTheme);
 }
 
-// Initialize from saved preference or system preference
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme) {
     applyTheme(savedTheme);
@@ -42,9 +54,8 @@ if (savedTheme) {
     applyTheme(prefersDarkScheme.matches ? 'dark' : 'light');
 }
 
-// Listen for system theme changes (only if no saved preference)
-prefersDarkScheme.addEventListener('change', (e) => {
+prefersDarkScheme.addEventListener('change', (event) => {
     if (!localStorage.getItem('theme')) {
-        applyTheme(e.matches ? 'dark' : 'light', true);
+        applyTheme(event.matches ? 'dark' : 'light', true);
     }
 });

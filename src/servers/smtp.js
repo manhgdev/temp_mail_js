@@ -5,13 +5,12 @@ import { persistParsedMail } from '../services/mail-processing.service.js';
 
 const SMTP_PORT = Number(process.env.SMTP_PORT ?? 25);
 
-const firstRecipient = (toList = []) => {
-  if (!Array.isArray(toList) || toList.length === 0) {
-    return null;
-  }
-
-  return toList[0]?.address?.toLowerCase() || null;
-};
+const getEnvelopeRecipients = (rcptTo = []) =>
+  [...new Set(
+    (Array.isArray(rcptTo) ? rcptTo : [])
+      .map((recipient) => String(recipient?.address || '').trim().toLowerCase())
+      .filter(Boolean)
+  )];
 
 export const createSmtpServer = () =>
   new SMTPServer({
@@ -23,27 +22,35 @@ export const createSmtpServer = () =>
     async onData(stream, session, callback) {
       try {
         const parsed = await simpleParser(stream);
-        const toEmail = firstRecipient(parsed.to?.value);
+        const recipients = getEnvelopeRecipients(session?.envelope?.rcptTo);
 
-        if (!toEmail) {
+        if (recipients.length === 0) {
           callback(null);
           return;
         }
 
-        const exists = await inboxExists(toEmail);
-        if (!exists) {
+        const existingRecipients = [];
+        for (const recipient of recipients) {
+          if (await inboxExists(recipient)) {
+            existingRecipients.push(recipient);
+          }
+        }
+
+        if (existingRecipients.length === 0) {
           callback(null);
           return;
         }
 
-        await persistParsedMail({
-          to: parsed.to,
-          from: parsed.from,
-          subject: parsed.subject,
-          text: parsed.text,
-          html: parsed.html,
-          attachments: parsed.attachments
-        });
+        for (const recipient of existingRecipients) {
+          await persistParsedMail({
+            to: recipient,
+            from: parsed.from,
+            subject: parsed.subject,
+            text: parsed.text,
+            html: parsed.html,
+            attachments: parsed.attachments
+          });
+        }
 
         callback(null);
       } catch (error) {

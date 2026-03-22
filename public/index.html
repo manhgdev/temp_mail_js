@@ -3,25 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="application-name" content="TempMail" />
+    <meta name="apple-mobile-web-app-title" content="TempMail" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; connect-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src https://cdnjs.cloudflare.com; img-src 'self' data: https:;"
+      content="default-src 'self' https://cdn.jsdelivr.net https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; connect-src 'self' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://*.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; frame-src 'self' https://translate.google.com https://translate.googleapis.com; font-src 'self' https://*.gstatic.com; img-src 'self' data: https:;"
     />
-    <title>TempMail — Disposable Email</title>
+    <title data-i18n="page.home.title">TempMail — Disposable Email</title>
     <meta
       name="description"
-      content="Local temporary mail app for generating disposable inboxes and testing mail flows."
+      data-i18n-content="page.home.description"
+      content="Create disposable email addresses instantly with TempMail. Protect your real inbox from spam, receive temporary emails fast, and test inbox flows safely."
     />
     <meta
       name="keywords"
-      content="temp mail, disposable email, temporary email, local smtp, inbox testing"
+      data-i18n-content="page.home.keywords"
+      content="temp mail, disposable email, temporary email, throwaway email, temporary inbox, spam protection, inbox testing"
     />
     <meta name="author" content="manhgdev" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
 
     <!-- Open Graph -->
-    <meta property="og:title" content="TempMail — Disposable Email" />
+    <meta property="og:title" data-i18n-content="page.home.title" content="TempMail — Disposable Email" />
+    <meta property="og:site_name" content="TempMail" />
     <meta
       property="og:description"
+      data-i18n-content="page.home.og_description"
       content="Create instant disposable email addresses. Protect your inbox from spam."
     />
     <meta
@@ -30,17 +37,19 @@
     />
     <meta
       property="og:url"
-      content="/"
+      content="https://tempmailv5.site/"
     />
     <meta property="og:type" content="website" />
-    <link rel="canonical" href="/" />
-    <meta name="robots" content="index, follow" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="vi_VN" />
+    <link rel="canonical" href="https://tempmailv5.site/" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="TempMail — Disposable Email" />
+    <meta name="twitter:title" data-i18n-content="page.home.title" content="TempMail — Disposable Email" />
     <meta
       name="twitter:description"
+      data-i18n-content="page.home.og_description"
       content="Create instant disposable email addresses. Protect your inbox from spam."
     />
     <meta
@@ -48,44 +57,118 @@
       content="/images/temp-mail-icon.png"
     />
     <meta name="theme-color" content="#2563EB" />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem('theme');
+          const theme =
+            savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+          const metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) {
+            metaTheme.content = theme === 'dark' ? '#0F172A' : '#2563EB';
+          }
+        } catch {}
+      })();
+    </script>
+    <script>
+      (() => {
+        try {
+          const email = localStorage.getItem('temp_mail_address') || '';
+          if (!email) {
+            window.__TEMPMAIL_BOOT__ = { email: '', initialInboxPromise: null };
+            return;
+          }
+
+          window.__TEMPMAIL_BOOT__ = {
+            email,
+            initialInboxPromise: fetch(`/inbox/${encodeURIComponent(email)}`).then(async (response) => {
+              const data = await response.json();
+              if (!response.ok) {
+                throw new Error(data.error || `Request failed with status ${response.status}`);
+              }
+              return data;
+            })
+          };
+        } catch {
+          window.__TEMPMAIL_BOOT__ = { email: '', initialInboxPromise: null };
+        }
+      })();
+    </script>
     <link rel="icon" href="images/temp-mail-icon.png" type="image/x-icon" />
-    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preload" href="vendor/fontawesome/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="vendor/fontawesome/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="css/style.css?v=20260322b" as="style" />
+    <link rel="stylesheet" href="css/style.css?v=20260322b" />
+
+    <script id="homepage-website-schema" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "TempMail",
+        "url": "https://tempmailv5.site/",
+        "inLanguage": ["en", "vi"]
+      }
+    </script>
+    <script id="homepage-app-schema" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "TempMail",
+        "url": "https://tempmailv5.site/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web",
+        "description": "Create disposable email addresses instantly to protect your primary inbox from spam and test mail flows safely.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
 
     <!-- Font Awesome -->
     <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
+      rel="preload"
+      as="style"
+      href="vendor/fontawesome/css/home-icons.min.css"
+      onload="this.onload=null;this.rel='stylesheet'"
     />
-
-    <!-- Confetti -->
-    <script
-      src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"
-      defer
-    ></script>
+    <noscript><link rel="stylesheet" href="vendor/fontawesome/css/home-icons.min.css" /></noscript>
   </head>
 
-  <body>
-    <a href="#main-content" class="skip-link">Skip to main content</a>
+  <body class="inbox-page">
+    <a href="#main-content" class="skip-link" data-i18n="skip.main">Skip to main content</a>
 
     <!-- Toast container -->
     <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <div class="app-container">
-      <!-- Theme toggle -->
-      <div class="theme-switch">
-        <i class="fa-solid fa-moon"></i>
-        <label class="switch">
-          <input
-            type="checkbox"
-            id="theme-toggle"
-            aria-label="Toggle dark mode"
-          />
-          <span class="slider round"></span>
-        </label>
-        <i class="fa-solid fa-sun"></i>
+      <div class="language-dropdown" data-language-switcher aria-label="Language switcher" data-i18n-aria-label="lang.switcher">
+        <button
+          type="button"
+          class="language-trigger"
+          data-language-trigger
+          aria-haspopup="menu"
+          aria-expanded="false"
+        >
+          <span data-language-current>English</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="language-menu" data-language-menu role="menu"></div>
       </div>
+
+      <!-- Theme toggle -->
+      <button
+        type="button"
+        id="theme-toggle"
+        class="theme-toggle-fab"
+        aria-label="Toggle dark mode"
+        title="Toggle dark mode"
+      >
+        <i class="fa-solid fa-moon"></i>
+        <span class="theme-toggle-label">Theme</span>
+      </button>
 
       <!-- Header -->
       <header role="banner">
@@ -95,28 +178,28 @@
             <h1>TempMail</h1>
           </div>
           <p class="header-subtitle">
-            Instant disposable email addresses. No signup, no hassle.
+            <span data-i18n="header.subtitle">Instant disposable email addresses. No signup, no hassle.</span>
           </p>
           <div class="header-badges">
             <div class="badge">
               <div id="status-led" class="status-led offline"></div>
-              <span id="status-text">Offline</span>
+              <span id="status-text" data-i18n="status.offline">Offline</span>
             </div>
             <div class="badge">
               <i class="fa-solid fa-bolt"></i>
-              <span>Instant</span>
+              <span data-i18n="badge.instant">Instant</span>
             </div>
             <div class="badge">
               <i class="fa-solid fa-shield-halved"></i>
-              <span>Private</span>
+              <span data-i18n="badge.private">Private</span>
             </div>
             <div
-              class="badge session-timer"
+              class="badge session-timer is-hidden"
               id="session-timer"
-              style="display: none"
+              translate="no"
             >
               <i class="fa-solid fa-clock"></i>
-              <span id="session-timer-text">00:00</span>
+              <span id="session-timer-text" class="notranslate">00:00</span>
             </div>
           </div>
         </div>
@@ -132,6 +215,9 @@
               <i class="fa-solid fa-at input-icon"></i>
               <input
                 id="addr"
+                class="notranslate"
+                translate="no"
+                data-i18n-placeholder="email.placeholder"
                 placeholder="Click New Address to create an inbox"
                 readonly
                 aria-label="Your temporary email address"
@@ -139,8 +225,10 @@
               <button
                 onclick="copyEmail()"
                 id="copy-btn"
+                data-i18n-title="copy.title"
                 title="Copy email address"
                 class="icon-button"
+                data-i18n-aria-label="copy.aria"
                 aria-label="Copy email address"
                 data-tooltip="Copy"
               >
@@ -152,14 +240,14 @@
             <div class="domain-selector">
               <label>
                 <i class="fa-solid fa-globe"></i>
-                Domain:
+                <span data-i18n="domain.label">Domain:</span>
               </label>
               <select
                 id="domain-select"
                 class="domain-select"
                 aria-label="Select email domain"
               >
-                <option value="">Loading domains...</option>
+                <option value="" data-i18n="domain.loading">Loading domains...</option>
               </select>
             </div>
 
@@ -169,27 +257,30 @@
                 <button
                   onclick="refreshMail()"
                   class="primary-button"
+                  data-i18n-title="button.refresh"
                   title="Refresh inbox"
                   data-tooltip="Refresh (R)"
                 >
-                  <i class="fa-solid fa-rotate"></i> Refresh
+                  <i class="fa-solid fa-rotate"></i> <span data-i18n="button.refresh">Refresh</span>
                 </button>
                 <button
                   onclick="genEmail()"
                   class="primary-button"
+                  data-i18n-title="button.new_address"
                   title="Generate new address"
                   data-tooltip="New (N)"
                 >
-                  <i class="fa-solid fa-wand-magic-sparkles"></i> New Address
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> <span data-i18n="button.new_address">New Address</span>
                 </button>
                 <button
                   id="send-test-mail-trigger"
                   onclick="showSendTestMailModal()"
                   class="primary-button dev-button hidden"
+                  data-i18n-title="button.send_test_mail"
                   title="Send test mail"
                   data-tooltip="Dev test mail"
                 >
-                  <i class="fa-solid fa-paper-plane"></i> Send Test Mail
+                  <i class="fa-solid fa-paper-plane"></i> <span data-i18n="button.send_test_mail">Send Test Mail</span>
                 </button>
               </div>
 
@@ -198,11 +289,12 @@
                 <label class="checkbox-label">
                   <i class="fa-solid fa-arrows-rotate"></i>
                   <input type="checkbox" id="auto-refresh" />
-                  <span>Auto</span>
+                  <span data-i18n="auto.label">Auto</span>
                 </label>
                 <select
                   id="refresh-interval"
                   class="select-input"
+                  translate="no"
                   aria-label="Auto-refresh interval"
                 >
                   <option value="10" selected>10s</option>
@@ -210,7 +302,7 @@
                   <option value="60">1m</option>
                   <option value="120">2m</option>
                 </select>
-                <span id="countdown" class="countdown-text"></span>
+                <span id="countdown" class="countdown-text notranslate" translate="no"></span>
               </div>
             </div>
           </div>
@@ -230,6 +322,7 @@
               <input
                 type="text"
                 id="email-search"
+                data-i18n-placeholder="search.placeholder"
                 placeholder="Search emails by subject, sender..."
                 aria-label="Search emails"
               />
@@ -240,8 +333,8 @@
           <div class="inbox-toolbar">
             <div class="email-count">
               <i class="fa-solid fa-inbox"></i>
-              Inbox
-              <span id="email-count-badge" class="count-badge">0</span>
+              <span data-i18n="inbox.title">Inbox</span>
+              <span id="email-count-badge" class="count-badge notranslate" translate="no">0</span>
             </div>
             <div class="inbox-actions">
               <button
@@ -251,7 +344,7 @@
                 id="delete-all-btn"
                 style="display: none"
               >
-                <i class="fa-solid fa-trash-can"></i> Clear All
+                <i class="fa-solid fa-trash-can"></i> <span data-i18n="button.clear_all">Clear All</span>
               </button>
             </div>
           </div>
@@ -264,43 +357,19 @@
           ></div>
           <div id="error-message" class="error-message hidden"></div>
 
-          <!-- Table -->
-          <div class="table-container">
-            <table id="emails" aria-describedby="email-table-caption">
-              <caption id="email-table-caption" class="visually-hidden">
-                Temporary email inbox
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">
-                    <i class="fa-solid fa-hashtag" aria-hidden="true"></i>
-                    <span class="visually-hidden">ID</span>
-                  </th>
-                  <th scope="col">
-                    <i class="fa-solid fa-user" aria-hidden="true"></i>
-                    <span class="visually-hidden">From</span>
-                  </th>
-                  <th scope="col">
-                    <i class="fa-solid fa-envelope" aria-hidden="true"></i>
-                    <span class="visually-hidden">Subject</span>
-                  </th>
-                  <th scope="col">
-                    <i class="fa-solid fa-calendar" aria-hidden="true"></i>
-                    <span class="visually-hidden">Date</span>
-                  </th>
-                  <th scope="col">
-                    <i class="fa-solid fa-gear" aria-hidden="true"></i>
-                    <span class="visually-hidden">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
+          <!-- Inbox list -->
+          <div class="mail-list-shell">
             <div
-              id="emails-responsive"
-              class="emails-responsive"
+              id="emails-list"
+              class="mail-list"
               aria-live="polite"
-            ></div>
+            >
+              <div class="empty-state">
+                <i class="fa-solid fa-inbox"></i>
+                <h2 data-i18n="mail.empty">Inbox is empty</h2>
+                <p data-i18n="mail.empty_hint">Generate an address or wait for a new email.</p>
+              </div>
+            </div>
           </div>
         </div>
       </main>
@@ -310,31 +379,37 @@
         <div class="footer-content">
           <p>
             <i class="fa-solid fa-code"></i>
-            Local TempMail UI for disposable inbox testing
+            <span data-i18n="footer.local_ui">Local TempMail UI for disposable inbox testing</span>
           </p>
 
           <div class="version">
-            <p>Feb 2026 release</p>
+            <p data-i18n="footer.version">Feb 2026 release</p>
           </div>
 
           <div class="social">
-            <span title="Email" aria-label="Email">
+            <span class="social-icon" aria-hidden="true">
               <i class="fa-solid fa-envelope"></i>
             </span>
-            <span title="GitHub" aria-label="GitHub">
+            <a
+              href="https://github.com/manhgdev/temp_mail_js"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="GitHub"
+              aria-label="GitHub"
+            >
               <i class="fa-brands fa-github"></i>
-            </span>
-            <span title="LinkedIn" aria-label="LinkedIn">
+            </a>
+            <span class="social-icon" aria-hidden="true">
               <i class="fa-brands fa-linkedin"></i>
             </span>
           </div>
 
           <div class="footer-buttons">
             <a class="footer-link-button" href="/submit-domain">
-              <i class="fa-solid fa-globe"></i> Submit Domain
+              <i class="fa-solid fa-globe"></i> <span data-i18n="footer.submit_domain">Submit Domain</span>
             </a>
             <button class="warning-button" onclick="showWarning()">
-              <i class="fa-solid fa-triangle-exclamation"></i> Disclaimer
+              <i class="fa-solid fa-triangle-exclamation"></i> <span data-i18n="footer.disclaimer">Disclaimer</span>
             </button>
             <a
               class="privacy-button"
@@ -342,7 +417,7 @@
               target="_blank"
               rel="noopener noreferrer"
             >
-              <i class="fa-solid fa-shield"></i> Privacy Policy
+              <i class="fa-solid fa-shield"></i> <span data-i18n="footer.privacy">Privacy Policy</span>
             </a>
           </div>
         </div>
@@ -353,26 +428,26 @@
     <div id="welcomeMessage" class="welcome-message">
       <div class="welcome-message-header">
         <i class="fas fa-rocket"></i>
-        <h3>Welcome to TempMail</h3>
+        <h2 data-i18n="welcome.title">Welcome to TempMail</h2>
       </div>
       <div class="welcome-message-content">
-        <p>
+        <p data-i18n="welcome.intro">
           Create a temporary email address when you need one. Use it to sign up for
           services without revealing your real email.
         </p>
         <br />
-        <p><strong>Tips:</strong></p>
+        <p><strong data-i18n="welcome.tips">Tips:</strong></p>
         <ul>
-          <li>Press <kbd>?</kbd> to see keyboard shortcuts</li>
-          <li>Enable auto-refresh to get emails instantly</li>
-          <li>Click "New Address" if loading fails</li>
+          <li><span data-i18n="welcome.tip.shortcuts">Press ? to see keyboard shortcuts</span></li>
+          <li data-i18n="welcome.tip.auto_refresh">Enable auto-refresh to get emails instantly</li>
+          <li data-i18n="welcome.tip.new_address">Click "New Address" if loading fails</li>
         </ul>
         <br />
-        <p>Use this local stack to verify inbox polling and SMTP ingestion.</p>
+        <p data-i18n="welcome.note">Use this local stack to verify inbox polling and SMTP ingestion.</p>
       </div>
       <div class="welcome-message-actions">
         <button onclick="hideWelcomeMessage()" class="primary-button">
-          <i class="fa-solid fa-check"></i> Got it!
+          <i class="fa-solid fa-check"></i> <span data-i18n="welcome.cta">Got it!</span>
         </button>
       </div>
     </div>
@@ -381,9 +456,10 @@
     <div
       class="shortcut-hint"
       onclick="showShortcuts()"
+      data-i18n-title="shortcut.title"
       title="Keyboard shortcuts"
     >
-      <kbd>?</kbd> Shortcuts
+      <kbd>?</kbd> <span data-i18n="shortcut.hint">Shortcuts</span>
     </div>
 
     <!-- Scroll to top button -->
@@ -391,6 +467,7 @@
       id="scroll-top-btn"
       class="scroll-top-btn"
       onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+      data-i18n-aria-label="aria.scroll_top"
       aria-label="Scroll to top"
     >
       <i class="fa-solid fa-chevron-up"></i>
@@ -405,6 +482,7 @@
             refreshMail();
             toggleFab();
           "
+          data-i18n-aria-label="aria.refresh"
           aria-label="Refresh"
           data-tooltip="Refresh"
         >
@@ -416,6 +494,7 @@
             genEmail();
             toggleFab();
           "
+          data-i18n-aria-label="aria.new_address"
           aria-label="New Address"
           data-tooltip="New Address"
         >
@@ -427,6 +506,7 @@
             copyEmail();
             toggleFab();
           "
+          data-i18n-aria-label="aria.copy"
           aria-label="Copy"
           data-tooltip="Copy"
         >
@@ -437,6 +517,7 @@
         class="fab-main"
         id="fab-main"
         onclick="toggleFab()"
+        data-i18n-aria-label="aria.quick_actions"
         aria-label="Quick actions"
       >
         <i class="fa-solid fa-plus"></i>
@@ -446,6 +527,7 @@
     <!-- Warning Modal -->
     <script>
       function showWarning() {
+        const t = window.TempMailI18n?.t || ((key) => key);
         const modal = document.createElement("div");
         modal.className = "email-modal";
         modal.onclick = (e) => {
@@ -454,19 +536,19 @@
         modal.innerHTML = `
           <div class="email-modal-content" style="max-width:500px">
             <div class="modal-header">
-              <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i> Disclaimer</h2>
+              <h2><i class="fa-solid fa-triangle-exclamation" style="color:var(--warning)"></i> ${t("disclaimer.title")}</h2>
               <button class="close-btn" onclick="this.closest('.email-modal').remove()">
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </div>
             <div class="email-body">
-              <p>⚠️ This project is purely for <strong>educational purposes</strong>.</p>
+              <p>⚠️ ${t("disclaimer.line1")}</p>
               <br>
-              <p>We do not allow illegal activities with this project and are not responsible for any incidents that may occur.</p>
+              <p>${t("disclaimer.line2")}</p>
               <br>
-              <p>This project uses a local temporary mail backend for creating disposable inboxes. Use it legally and responsibly.</p>
+              <p>${t("disclaimer.line3")}</p>
               <br>
-              <p style="color:var(--text-tertiary);font-size:0.8rem">Local development disclaimer for this project.</p>
+              <p style="color:var(--text-tertiary);font-size:0.8rem">${t("disclaimer.note")}</p>
             </div>
           </div>
         `;
@@ -518,22 +600,51 @@
 
     <!-- Welcome Message Logic -->
     <script>
+      let confettiLoaderPromise;
+
+      function loadConfetti() {
+        if (typeof confetti === "function") {
+          return Promise.resolve(confetti);
+        }
+
+        if (confettiLoaderPromise) {
+          return confettiLoaderPromise;
+        }
+
+        confettiLoaderPromise = new Promise((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js";
+          script.async = true;
+          script.onload = () => resolve(window.confetti);
+          script.onerror = reject;
+          document.head.appendChild(script);
+        });
+
+        return confettiLoaderPromise;
+      }
+
       function hideWelcomeMessage() {
         const welcomeMessage = document.getElementById("welcomeMessage");
         welcomeMessage.style.animation = "slideOut 0.5s ease forwards";
 
-        if (typeof confetti === "function") {
-          confetti({
-            particleCount: 120,
-            spread: 160,
-            origin: { y: 0.8 },
-            colors: ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"],
-            startVelocity: 40,
-            gravity: 1.2,
-            scalar: 0.7,
-            ticks: 120,
-          });
-        }
+        loadConfetti()
+          .then((runConfetti) => {
+            if (typeof runConfetti !== "function") {
+              return;
+            }
+
+            runConfetti({
+              particleCount: 120,
+              spread: 160,
+              origin: { y: 0.8 },
+              colors: ["#3B82F6", "#8B5CF6", "#10B981", "#F59E0B", "#EF4444"],
+              startVelocity: 40,
+              gravity: 1.2,
+              scalar: 0.7,
+              ticks: 120,
+            });
+          })
+          .catch(() => {});
 
         setTimeout(() => {
           welcomeMessage.remove();
@@ -543,10 +654,8 @@
 
       document.addEventListener("DOMContentLoaded", () => {
         if (!localStorage.getItem("welcomeMessageSeen")) {
-          setTimeout(() => {
-            const welcomeMessage = document.getElementById("welcomeMessage");
-            if (welcomeMessage) welcomeMessage.classList.add("show");
-          }, 800);
+          const welcomeMessage = document.getElementById("welcomeMessage");
+          if (welcomeMessage) welcomeMessage.classList.add("show");
         } else {
           const wm = document.getElementById("welcomeMessage");
           if (wm) wm.remove();
@@ -554,8 +663,65 @@
       });
     </script>
 
+    <script>
+      (() => {
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = themeToggle?.querySelector('i');
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function updateThemeButton(theme) {
+          if (!themeToggle || !themeIcon) {
+            return;
+          }
+
+          const isDark = theme === 'dark';
+          themeToggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+          themeToggle.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+          themeToggle.setAttribute('aria-pressed', String(isDark));
+          themeIcon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+
+        function applyTheme(theme, animate = false) {
+          if (animate) {
+            document.documentElement.style.transition = 'background 0.35s ease, color 0.35s ease';
+            setTimeout(() => {
+              document.documentElement.style.transition = '';
+            }, 400);
+          }
+
+          document.documentElement.setAttribute('data-theme', theme);
+          updateThemeButton(theme);
+
+          const metaTheme = document.querySelector('meta[name="theme-color"]');
+          if (metaTheme) {
+            metaTheme.content = theme === 'dark' ? '#0F172A' : '#2563EB';
+          }
+        }
+
+        function getResolvedTheme() {
+          return document.documentElement.getAttribute('data-theme') || 'light';
+        }
+
+        function toggleTheme() {
+          const nextTheme = getResolvedTheme() === 'dark' ? 'light' : 'dark';
+          applyTheme(nextTheme, true);
+          localStorage.setItem('theme', nextTheme);
+        }
+
+        if (themeToggle) {
+          themeToggle.addEventListener('click', toggleTheme);
+        }
+
+        applyTheme(getResolvedTheme());
+
+        prefersDarkScheme.addEventListener('change', (event) => {
+          if (!localStorage.getItem('theme')) {
+            applyTheme(event.matches ? 'dark' : 'light', true);
+          }
+        });
+      })();
+    </script>
     <!-- App scripts -->
-    <script src="js/api.js" type="module"></script>
-    <script src="js/theme.js" type="module"></script>
+    <script src="js/api.js?v=20260322b" type="module"></script>
   </body>
 </html>

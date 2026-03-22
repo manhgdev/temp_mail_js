@@ -35,6 +35,8 @@ export const persistParsedMail = async ({ to, from, subject, text, html, attachm
   const htmlBody = html || `<pre>${text || ''}</pre>`;
   const htmlKey = `mails/${id}/body.html`;
   const htmlUrl = await uploadFile(htmlKey, htmlBody, 'text/html; charset=utf-8');
+  const textKey = `mails/${id}/body.txt`;
+  await uploadFile(textKey, bodyText || getPreview(text || html || ''), 'text/plain; charset=utf-8');
 
   const uploadedAttachments = [];
   for (const attachment of attachments) {
@@ -61,7 +63,8 @@ export const persistParsedMail = async ({ to, from, subject, text, html, attachm
     from: normalizeEmailAddress(from),
     subject: subject || '(no subject)',
     preview: getPreview(text || html || ''),
-    body_text: bodyText || getPreview(text || html || ''),
+    body_text: '',
+    text_key: textKey,
     html_url: htmlUrl,
     html_key: htmlKey,
     attachments: uploadedAttachments,

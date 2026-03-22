@@ -5,29 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self' https://cdnjs.cloudflare.com; connect-src 'self'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline'; font-src https://cdnjs.cloudflare.com data:; img-src 'self' data: https:;"
+      content="default-src 'self' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; connect-src 'self' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://*.gstatic.com; script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; frame-src https://translate.google.com https://translate.googleapis.com; font-src 'self' data: https://*.gstatic.com; img-src 'self' data: https:;"
     />
-    <title>Submit Domain</title>
+    <title data-i18n="submit.page.title">Submit Domain</title>
     <link rel="stylesheet" href="/css/style.css" />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-      crossorigin="anonymous"
-      referrerpolicy="no-referrer"
-    />
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
   </head>
   <body>
     <div class="app-container admin-app submit-shell">
+      <div class="language-dropdown" data-language-switcher aria-label="Language switcher" data-i18n-aria-label="lang.switcher">
+        <button
+          type="button"
+          class="language-trigger"
+          data-language-trigger
+          aria-haspopup="menu"
+          aria-expanded="false"
+        >
+          <span data-language-current>English</span>
+          <i class="fa-solid fa-chevron-down"></i>
+        </button>
+        <div class="language-menu" data-language-menu role="menu"></div>
+      </div>
+
       <main class="main-content submit-main">
         <section class="card admin-nav-shell">
           <div class="admin-nav">
             <div class="admin-nav-brand">
               <i class="fa-solid fa-globe"></i>
-              <span>Submit Domain</span>
+              <span data-i18n="submit.nav.title">Submit Domain</span>
             </div>
             <nav class="admin-nav-links" aria-label="Site navigation">
-              <a class="admin-nav-link" href="/">Inbox</a>
-              <a class="admin-nav-link active" href="/submit-domain">Submit Domain</a>
+              <a class="admin-nav-link" href="/" data-i18n="inbox.title">Inbox</a>
+              <a class="admin-nav-link active" href="/submit-domain" data-i18n="footer.submit_domain">Submit Domain</a>
               <a class="admin-nav-link" href="/admin">Admin</a>
             </nav>
           </div>
@@ -35,51 +44,51 @@
 
         <section class="card submit-stage">
           <div class="submit-stage-copy">
-            <span class="admin-section-kicker">Public access</span>
+            <span class="admin-section-kicker" data-i18n="submit.kicker">Public access</span>
             <div class="admin-toolbar-title">
               <i class="fa-solid fa-globe"></i>
-              <h1>Submit a domain</h1>
+              <h1 data-i18n="submit.title">Submit a domain</h1>
             </div>
-            <p>Submit a domain or subdomain you control, then point its mail DNS here before sending it for review.</p>
+            <p data-i18n="submit.intro">Submit a domain or subdomain you control, then point its mail DNS here before sending it for review.</p>
             <div class="submit-info-note submit-inline-note">
               <i class="fa-solid fa-circle-info"></i>
               <p>
-                Set DNS like this:<br />
-                <b>A: </b> Name: <strong>mail</strong> -> IPv4 address: <strong id="submit-domain-public-ip">loading...</strong><br />
-                <b>MX: </b> Name: <strong>@</strong> -> Mail server: <strong>yourdomain.com</strong> -> Priority: <strong>10</strong>
+                <span data-i18n="submit.dns.title">Set DNS like this:</span><br />
+                <b data-i18n="submit.dns.a">A:</b> <span id="submit-dns-a-text">Name: mail -> IPv4 address: loading...</span><br />
+                <b data-i18n="submit.dns.mx">MX:</b> <span data-i18n="submit.dns.mx_text">Name: @ -> Mail server: yourdomain.com -> Priority: 10</span>
               </p>
             </div>
             <ul class="submit-info-list submit-inline-list">
-              <li>For <strong>@yourdomain.com</strong>: set <strong>MX Name = @</strong>, <strong>Mail server = mail.yourdomain.com</strong>.</li>
-              <li>For <strong>@mail.yourdomain.com</strong>: set <strong>MX Name = mail</strong>, <strong>Mail server = mail.yourdomain.com</strong>.</li>
-              <li>If you use Cloudflare, keep <strong>mail.yourdomain.com</strong> as <strong>DNS only</strong>.</li>
+              <li data-i18n="submit.rule.root">For @yourdomain.com: set MX Name = @, Mail server = mail.yourdomain.com.</li>
+              <li data-i18n="submit.rule.sub">For @mail.yourdomain.com: set MX Name = mail, Mail server = mail.yourdomain.com.</li>
+              <li data-i18n="submit.rule.cloudflare">If you use Cloudflare, keep mail.yourdomain.com as DNS only.</li>
             </ul>
           </div>
 
           <section class="submit-form-panel">
             <div class="section-heading admin-section-head">
               <div>
-                <h2>Submission form</h2>
-                <p>Tip: Contact me on Telegram: <a href="https://t.me/zm_dev" target="_blank" rel="noopener noreferrer">Click here</a> along with the correct DNS domain name for faster approval.</p>
+                <h2 data-i18n="submit.form.title">Submission form</h2>
+                <p><span data-i18n="submit.form.tip_prefix">Tip: Contact me on Telegram:</span> <a href="https://t.me/zm_dev" target="_blank" rel="noopener noreferrer" data-i18n="submit.form.tip_link">Click here</a> <span data-i18n="submit.form.tip_suffix">along with the correct DNS domain name for faster approval.</span></p>
               </div>
             </div>
             <div id="submit-domain-alert" class="error-message hidden"></div>
             <form id="submit-domain-form" class="admin-form-grid submit-domain-form">
               <label>
-                Domain
-                <input type="text" name="domain" required placeholder="yourdomain.com" />
+                <span data-i18n="submit.form.domain">Domain</span>
+                <input type="text" name="domain" required data-i18n-placeholder="submit.form.domain_placeholder" placeholder="yourdomain.com" />
               </label>
               <label>
-                Requested expiry
+                <span data-i18n="submit.form.expiry">Requested expiry</span>
                 <input type="datetime-local" name="expires_at" />
               </label>
               <label>
-                Note
-                <textarea name="note" rows="3" data-placeholder-template="Telegram @yourname, email owner@example.com, A mail.yourdomain.com -> {{PUBLIC_IP}}, MX Name @ -> mail.yourdomain.com, contact @zm_dev" placeholder="Telegram @yourname, email owner@example.com, A mail.yourdomain.com -> loading..., MX Name @ -> mail.yourdomain.com, contact @zm_dev"></textarea>
+                <span data-i18n="submit.form.note">Note</span>
+                <textarea name="note" rows="3" data-placeholder-template-key="submit.form.note_placeholder" placeholder="Telegram @yourname, email owner@example.com, A mail.yourdomain.com -> loading..., MX Name @ -> mail.yourdomain.com, contact @zm_dev"></textarea>
               </label>
               <div class="submit-form-actions">
                 <button type="submit" class="primary-button">
-                  <i class="fa-solid fa-paper-plane"></i> Submit domain
+                  <i class="fa-solid fa-paper-plane"></i> <span data-i18n="submit.form.button">Submit domain</span>
                 </button>
               </div>
             </form>

@@ -1,8 +1,11 @@
+import { applyTranslations, initI18n, t } from './i18n.js';
+
 const form = document.getElementById('submit-domain-form');
 const alertBox = document.getElementById('submit-domain-alert');
 const resultBox = document.getElementById('submit-domain-result');
-const publicIpNode = document.getElementById('submit-domain-public-ip');
+const publicIpNode = document.getElementById('submit-dns-a-text');
 const noteField = form?.querySelector('textarea[name="note"]');
+let publicIpValue = 'your-server-ip';
 
 const showNotice = (content = '', state = 'error') => {
   if (!content) {
@@ -31,7 +34,7 @@ const showAlert = (message = '', type = 'error') => {
       <div class="submit-alert-copy">
         <i class="fa-solid ${icon}"></i>
         <div>
-          <strong>${isPendingReview ? 'Already pending review' : 'Unable to submit domain'}</strong>
+          <strong>${isPendingReview ? t('submit.alert.pending_title') : t('submit.alert.error_title')}</strong>
           <p>${message}</p>
         </div>
       </div>
@@ -44,6 +47,16 @@ const showResult = (content = '') => {
   resultBox.innerHTML = '';
   resultBox.classList.add('hidden');
   showNotice(content, 'success');
+};
+
+const renderSubmitCopy = () => {
+  if (publicIpNode) {
+    publicIpNode.textContent = t('submit.dns.a_text', { ip: publicIpValue });
+  }
+
+  if (noteField) {
+    noteField.placeholder = t('submit.form.note_placeholder', { ip: publicIpValue });
+  }
 };
 
 const postJson = async (path, payload) => {
@@ -73,21 +86,15 @@ const loadSubmitDomainConfig = async () => {
 
     const publicIp = String(payload.public_ip || '').trim();
     if (!publicIp) {
+      renderSubmitCopy();
       return;
     }
 
-    if (publicIpNode) {
-      publicIpNode.textContent = publicIp;
-    }
-
-    if (noteField) {
-      const template = noteField.dataset.placeholderTemplate || noteField.placeholder;
-      noteField.placeholder = template.replaceAll('{{PUBLIC_IP}}', publicIp);
-    }
+    publicIpValue = publicIp;
+    renderSubmitCopy();
   } catch {
-    if (publicIpNode) {
-      publicIpNode.textContent = 'your-server-ip';
-    }
+    publicIpValue = 'your-server-ip';
+    renderSubmitCopy();
   }
 };
 
@@ -113,13 +120,25 @@ form?.addEventListener('submit', async (event) => {
         <i class="fa-solid fa-circle-check"></i>
         <div>
           <strong>${domain}</strong>
-          <p>Submitted for review. It stays pending and inactive until an admin approves it.</p>
+          <p>${t('submit.alert.success_body')}</p>
         </div>
       </div>
     `);
+    renderSubmitCopy();
   } catch (error) {
     showAlert(error.message);
   }
 });
 
-loadSubmitDomainConfig();
+const initPage = async () => {
+  await initI18n(document, { ip: publicIpValue });
+  renderSubmitCopy();
+  await loadSubmitDomainConfig();
+};
+
+window.addEventListener('tempmail:languagechange', () => {
+  applyTranslations(document, undefined, { ip: publicIpValue });
+  renderSubmitCopy();
+});
+
+void initPage();

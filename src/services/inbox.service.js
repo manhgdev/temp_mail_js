@@ -1,13 +1,17 @@
 import {
-  clearInbox,
   createInbox,
+  deleteInbox,
+  deleteInboxAll,
   deleteMail,
   getInbox,
   getMail,
-  inboxExists
+  inboxExists,
+  listInboxMails
 } from '../repositories/mail.repo.js';
 import { generateRandomEmail } from '../utils/email.js';
 import { getActiveDomains, normalizeDomain } from './domain.service.js';
+
+const MAX_GENERATE_ATTEMPTS = 10;
 
 export const generateInboxEmail = async (domain) => {
   const activeDomains = await getActiveDomains();
@@ -22,9 +26,15 @@ export const generateInboxEmail = async (domain) => {
     throw new Error('Unsupported domain');
   }
 
-  const email = generateRandomEmail(selectedDomain);
-  await createInbox(email);
-  return email;
+  for (let attempt = 0; attempt < MAX_GENERATE_ATTEMPTS; attempt += 1) {
+    const email = generateRandomEmail(selectedDomain);
+    const created = await createInbox(email);
+    if (created) {
+      return email;
+    }
+  }
+
+  throw new Error('Failed to allocate a unique inbox');
 };
 
 export const fetchInboxMails = async (email) => {
@@ -33,22 +43,33 @@ export const fetchInboxMails = async (email) => {
     return null;
   }
 
-  const ids = await getInbox(email);
-  if (ids.length === 0) {
-    return [];
-  }
-
-  const mails = await Promise.all(ids.map((id) => getMail(id)));
-  return mails.filter(Boolean);
+  return listInboxMails(email);
 };
 
 export const fetchMailById = async (id) => getMail(id);
-export const deleteMailById = async (id) => deleteMail(id);
-export const deleteInboxByEmail = async (email) => {
+export const deleteInboxById = async (email, id) => {
   const exists = await inboxExists(email);
   if (!exists) {
     return null;
   }
 
-  return clearInbox(email);
+  return deleteInbox(email, id);
+};
+
+export const deleteInboxAllByEmail = async (email) => {
+  const exists = await inboxExists(email);
+  if (!exists) {
+    return null;
+  }
+
+  return deleteInboxAll(email);
+};
+
+export const deleteMailByEmail = async (email) => {
+  const exists = await inboxExists(email);
+  if (!exists) {
+    return null;
+  }
+
+  return deleteMail(email);
 };
