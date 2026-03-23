@@ -4,7 +4,6 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrotliCompress, createGzip } from 'node:zlib';
-import { inboxExists } from '../repositories/mail.repo.js';
 import {
   extractObjectKeyFromUrl,
   getObject,
@@ -37,11 +36,12 @@ import {
   isFirebaseClientConfigured,
   verifyAdminIdToken
 } from '../services/firebase-admin.js';
+import { inboxExists } from '../services/mail.service.js';
 import { persistParsedMail } from '../services/mail-processing.service.js';
 import redis from '../services/redis.js';
 import { ENV } from '../config/env.js';
 
-const API_PORT = Number(process.env.API_PORT ?? 9001);
+const API_PORT = ENV.API_PORT;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
@@ -670,13 +670,34 @@ export const createHttpServer = () =>
           return;
         }
 
-        const mails = await fetchInboxMails(rawEmail);
-        if (mails === null) {
+        const limitParam = url.searchParams.get('limit');
+        const before = url.searchParams.get('before') || '';
+        const limit = limitParam === null ? undefined : Number(limitParam);
+        let inboxPage;
+
+        try {
+          inboxPage = await fetchInboxMails(rawEmail, { limit, before });
+        } catch (error) {
+          if (/before must be a valid inbox cursor/i.test(error.message)) {
+            badRequest(response, error.message);
+            return;
+          }
+
+          throw error;
+        }
+
+        if (inboxPage === null) {
           sendJson(response, 404, { error: 'Inbox not found' });
           return;
         }
 
-        sendJson(response, 200, { email: rawEmail, mails });
+        sendJson(response, 200, {
+          email: rawEmail,
+          mails: inboxPage.mails,
+          next_cursor: inboxPage.nextCursor,
+          total_count: inboxPage.totalCount,
+          limit: limit ?? inboxPage.mails.length
+        });
         return;
       }
 

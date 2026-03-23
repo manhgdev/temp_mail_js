@@ -1,5 +1,12 @@
+const SITE_ORIGIN = window.location.origin || 'https://tempmailv5.site';
+const SITE_PATHNAME = window.location.pathname || '/';
+const SITE_PATH = `${SITE_ORIGIN}${SITE_PATHNAME === '/' ? '' : SITE_PATHNAME}`;
+
 const CONFIG = {
   API_BASE: '',
+  SITE_ORIGIN,
+  SITE_PATHNAME,
+  SITE_PATH,
   EMAIL_KEY: 'temp_mail_address',
   DOMAIN_KEY: 'temp_mail_domain',
   AUTO_REFRESH_KEY: 'temp_mail_auto_refresh',
@@ -16,7 +23,14 @@ const CONFIG = {
   }
 };
 
+window.__TEMPMAIL_SITE__ = {
+  origin: SITE_ORIGIN,
+  pathname: SITE_PATHNAME,
+  path: SITE_PATH
+};
+
 Object.freeze(CONFIG);
 Object.freeze(CONFIG.STATUS);
+Object.freeze(window.__TEMPMAIL_SITE__);
 
 export default CONFIG;

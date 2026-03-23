@@ -1,3 +1,4 @@
+import CONFIG from './config.js';
 import enTranslations from './translations.en.js';
 
 const STORAGE_KEY = 'temp_mail_language';
@@ -59,7 +60,7 @@ const ensureLanguageLoaded = async (lang) => {
 };
 
 const updateSeoSchemas = (lang = getLanguage()) => {
-  const siteUrl = window.location.origin || 'https://tempmailv5.site';
+  const siteUrl = CONFIG.SITE_ORIGIN;
 
   const websiteSchemaNode = document.getElementById('homepage-website-schema');
   if (websiteSchemaNode) {

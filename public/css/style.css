@@ -727,13 +727,16 @@ tr.row-new {
 /* ── Responsive Email Cards ── */
 .mail-list-shell {
   min-height: 360px;
+  max-height: min(70vh, 31rem);
+  overflow-y: auto;
+  padding-right: 0.2rem;
   border-radius: var(--radius-lg);
 }
 .mail-list {
   display: flex;
   flex-direction: column;
   gap: 0.95rem;
-  min-height: inherit;
+  min-height: min-content;
 }
 .mail-item {
   position: relative;
@@ -958,6 +961,7 @@ tr.row-new {
 
   .mail-list-shell {
     min-height: 0;
+    max-height: min(68vh, 30rem);
   }
   .mail-item {
     grid-template-columns: auto minmax(0, 1fr);
@@ -1002,12 +1006,23 @@ tr.row-new {
 }
 
 @media (min-width: 769px) and (max-width: 1180px) {
-  .mail-list-shell { min-height: 420px; }
+  .mail-list-shell { min-height: 420px; max-height: min(68vh, 31rem); }
   .empty-state { min-height: 340px; }
 }
 
 /* ── Loading Spinner ── */
 #loading-spinner { margin: 1rem auto; }
+.mail-list-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 0.85rem 0 0.2rem;
+}
+
+.load-more-button[disabled] {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .spinner {
   width: 2rem; height: 2rem;
   border: 3px solid var(--border);
@@ -1580,6 +1595,16 @@ footer::before {
 .privacy-button:hover { background: var(--bg-secondary); }
 .footer-buttons .privacy-button {
   text-decoration: none;
+}
+.visitor-badge-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+.visitor-badge {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .footer-link-button {

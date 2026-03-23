@@ -1,0 +1,77 @@
+# TODO
+
+## Đã làm
+
+- Tách cấu trúc mail storage khỏi file cũ [`src/repositories/mail.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail.repo.js) thành các repository riêng theo trách nhiệm.
+- Tạo [`src/repositories/inbox-meta.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/inbox-meta.repo.js) để quản lý metadata inbox trên Firestore.
+- Tạo [`src/repositories/mail-meta.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-meta.repo.js) để quản lý metadata mail và bảng lookup `mail id -> email` trên Firestore.
+- Tạo [`src/repositories/mail-content.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-content.repo.js) để xử lý lưu, đọc và xóa content mail trên S3.
+- Tạo [`src/repositories/mail-cache.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-cache.repo.js) để gom toàn bộ Redis cache cho mail vào một chỗ riêng.
+- Tạo [`src/services/mail.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/mail.service.js) làm tầng orchestration ghép Firestore, S3 và Redis.
+- Chuyển logic tạo mail incoming từ [`src/services/mail-processing.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/mail-processing.service.js) sang gọi `mail.service` thay vì thao tác storage trực tiếp.
+- Cập nhật [`src/services/inbox.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/inbox.service.js) để chỉ giữ vai trò inbox/domain và gọi sang `mail.service`.
+- Cập nhật [`src/servers/http.js`](/Users/manhg/DEV/TempMail/temp_mail/src/servers/http.js) để dùng `inboxExists` từ `mail.service`.
+- Cập nhật [`src/servers/smtp.js`](/Users/manhg/DEV/TempMail/temp_mail/src/servers/smtp.js) để dùng `inboxExists` từ `mail.service`.
+- Xóa file [`src/repositories/mail.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail.repo.js) vì trách nhiệm đã được tách sang các file mới.
+- Giữ Redis theo đúng vai trò cache ngắn hạn trong tầng repository riêng, thay vì trộn chung với metadata/content storage.
+- Giữ Firestore là nơi xử lý metadata inbox/mail.
+- Giữ S3 là nơi xử lý content nặng của mail như body và attachments.
+- Sửa lỗi cache mail detail bị lưu `body_text` rỗng khi mail mới được tạo.
+- Thêm kiểm tra inbox phải tồn tại ngay trong [`src/services/mail.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/mail.service.js) trước khi cho phép ghi mail mới.
+- Bổ sung cơ chế rollback S3 khi tạo mail thất bại sau bước upload content nhưng chưa ghi xong metadata Firestore.
+- Đổi thứ tự xóa sang ưu tiên xóa metadata trước, sau đó cleanup content trên S3 để tránh còn mail hiển thị nhưng mất body/attachment.
+- Thêm log lỗi cleanup S3 khi xóa mail hoặc xóa hàng loạt thất bại.
+- Thêm pagination cho inbox trong [`src/repositories/mail-meta.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-meta.repo.js) và [`src/servers/http.js`](/Users/manhg/DEV/TempMail/temp_mail/src/servers/http.js) qua `limit` và `before`.
+- Giữ tương thích API cũ của `/inbox/:email` bằng cách vẫn trả `mails`, đồng thời bổ sung `next_cursor` và `limit`.
+- Sửa logic cache inbox rỗng để Redis cache `[]` vẫn được sử dụng đúng, không query Firestore thừa.
+- Chuyển TTL của Redis mail cache sang cấu hình trong [`src/config/env.js`](/Users/manhg/DEV/TempMail/temp_mail/src/config/env.js) để có thể tune theo môi trường deploy.
+- Thêm version cho cache prefix Redis để dễ invalidate toàn bộ cache khi đổi schema payload.
+- Thu gọn payload cache của mail detail trong [`src/repositories/mail-cache.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-cache.repo.js) bằng cách chỉ giữ các field cần thiết cho API/UI hiện tại và bỏ các field dư như `html_url` và `attachments[].url`.
+- Bổ sung các biến env mới:
+- `MAIL_CACHE_PREFIX_VERSION`
+- `MAIL_CACHE_INBOX_EXISTS_TTL_SECONDS`
+- `MAIL_CACHE_INBOX_LIST_TTL_SECONDS`
+- `MAIL_CACHE_DETAIL_TTL_SECONDS`
+- Sửa luồng tạo mail để tránh xóa nhầm content S3 khi metadata mail đã ghi thành công nhưng bước cập nhật inbox metadata bị lỗi.
+- Bổ sung rollback upload dở dang ngay trong [`src/repositories/mail-content.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-content.repo.js) để tránh để lại object rác trên S3 khi upload fail giữa chừng.
+- Sửa SMTP ở [`src/servers/smtp.js`](/Users/manhg/DEV/TempMail/temp_mail/src/servers/smtp.js) để reject recipient không tồn tại bằng lỗi SMTP `550` thay vì nhận mail rồi drop im lặng.
+- Sửa phân trang inbox trong [`src/repositories/mail-meta.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-meta.repo.js) sang cursor ổn định hơn dựa trên `created_at` và `id`.
+- Sửa response `/inbox/:email` trong [`src/servers/http.js`](/Users/manhg/DEV/TempMail/temp_mail/src/servers/http.js) để field `limit` phản ánh giá trị request thay vì số bản ghi thực trả.
+- Rút [`README.md`](/Users/manhg/DEV/TempMail/temp_mail/README.md) theo hướng `prod-first`, nhấn mạnh production là luồng mail storage chuẩn và local/dev nên mô phỏng production.
+- Nối frontend inbox trong [`public/js/api.js`](/Users/manhg/DEV/TempMail/temp_mail/public/js/api.js) dùng `next_cursor` của backend để tải thêm mail thay vì chỉ đọc page đầu.
+- Bổ sung nút `Load more` trong UI inbox và thêm key dịch tương ứng trong [`public/js/translations.en.js`](/Users/manhg/DEV/TempMail/temp_mail/public/js/translations.en.js) và [`public/js/translations.vi.js`](/Users/manhg/DEV/TempMail/temp_mail/public/js/translations.vi.js).
+- Thêm CSS cho nút tải thêm ở [`public/css/style.css`](/Users/manhg/DEV/TempMail/temp_mail/public/css/style.css).
+- Gom toàn bộ biến runtime còn rải rác về [`src/config/env.js`](/Users/manhg/DEV/TempMail/temp_mail/src/config/env.js), gồm `API_PORT`, `SMTP_PORT`, `MAIL_TTL`, `MAX_INBOX`, và `DEFAULT_INBOX_PAGE_SIZE`.
+- Cập nhật [`src/constants/index.js`](/Users/manhg/DEV/TempMail/temp_mail/src/constants/index.js) để đọc `MAIL_TTL` và `MAX_INBOX` từ `ENV` thay vì hardcode.
+- Cập nhật [`.env.example`](/Users/manhg/DEV/TempMail/temp_mail/.env.example) và [`README.md`](/Users/manhg/DEV/TempMail/temp_mail/README.md) để phản ánh các biến runtime mới đã được gom vào config chính.
+- Enforce retention thật theo `MAX_INBOX` trong [`src/services/mail.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/mail.service.js): sau khi lưu mail mới, inbox sẽ bị trim để chỉ giữ lại `MAX_INBOX` mail mới nhất.
+- Thêm [`listInboxOverflowMailMeta()`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-meta.repo.js) trong [`src/repositories/mail-meta.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-meta.repo.js) để xác định các mail vượt quá ngưỡng retention.
+- Khi trim inbox do vượt `MAX_INBOX`, hệ thống sẽ xóa metadata cũ trong Firestore, cleanup content tương ứng trên S3, và invalidate cache detail của các mail bị loại.
+- Làm rõ lại ý nghĩa config:
+- `MAX_INBOX` là retention cap, tức số mail mới nhất được giữ lại cho mỗi inbox.
+- `DEFAULT_INBOX_PAGE_SIZE` là page size mặc định khi frontend/backend đọc inbox theo kiểu `Load more`.
+- Sửa `fetchInboxMails()` trong [`src/services/mail.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/mail.service.js) để `DEFAULT_INBOX_PAGE_SIZE` chỉ còn là giá trị mặc định, không còn bị dùng sai như trần cứng cho mọi request `limit`.
+- Sửa pagination trong [`src/repositories/mail-meta.repo.js`](/Users/manhg/DEV/TempMail/temp_mail/src/repositories/mail-meta.repo.js) sang query `limit + 1` để chỉ trả `nextCursor` khi thực sự còn trang sau, tránh hiện `Load more` giả.
+- Sửa `nextCursor` từ dữ liệu cache trong [`src/services/mail.service.js`](/Users/manhg/DEV/TempMail/temp_mail/src/services/mail.service.js) để giữ cùng format cursor `created_at + id` với backend pagination hiện tại.
+
+## Đã kiểm tra
+
+- `node --check src/services/mail.service.js`
+- `node --check src/services/inbox.service.js`
+- `node --check src/services/mail-processing.service.js`
+- `node --check src/servers/http.js`
+- `node --check src/servers/smtp.js`
+- `node --check src/repositories/mail-meta.repo.js`
+- `node --check src/config/env.js`
+- `node --check src/repositories/mail-cache.repo.js`
+- `node --check src/repositories/mail-content.repo.js`
+- `node --check public/js/api.js`
+- `node --check src/constants/index.js`
+- `node --check src/repositories/mail-meta.repo.js`
+- `node -e "import('./src/services/mail.service.js').then(() => console.log('mail.service ok'))"`
+- `node -e "import('./src/repositories/mail-cache.repo.js').then(() => console.log('mail-cache ok'))"`
+- `node -e "import('./src/repositories/mail-meta.repo.js').then(() => console.log('mail-meta ok'))"`
+- `node -e "import('./src/services/inbox.service.js').then(() => console.log('inbox.service ok'))"`
+- `node -e "import('./src/services/mail-processing.service.js').then(() => console.log('mail-processing ok'))"`
+- `node -e "import('./src/servers/http.js').then(() => console.log('http ok'))"`
+- `node -e "import('./src/servers/smtp.js').then(() => console.log('smtp ok'))"`

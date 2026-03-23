@@ -37,6 +37,30 @@ const getStored = (key) => localStorage.getItem(key);
 const setStored = (key, value) => localStorage.setItem(key, value);
 const removeStored = (key) => localStorage.removeItem(key);
 const bootState = window.__TEMPMAIL_BOOT__ || {};
+const initVisitorBadge = () => {
+  const badge = document.getElementById('visitor-badge');
+  if (!badge) {
+    return;
+  }
+
+  const params = new URLSearchParams({
+    path: CONFIG.SITE_ORIGIN,
+    label: 'VISITORS',
+    labelColor: '%23d9e3f0',
+    countColor: '%23263759',
+    style: 'plastic',
+  });
+
+  badge.addEventListener(
+    'error',
+    () => {
+      badge.closest('.visitor-badge-wrap')?.remove();
+    },
+    { once: true }
+  );
+  badge.src = `https://api.visitorbadge.io/api/visitors?${params.toString()}`;
+};
+
 const setSessionTimerVisibility = (visible) => {
   elements.sessionTimer?.classList.toggle('is-hidden', !visible);
 };
@@ -51,11 +75,17 @@ let availableDomains = [];
 let allowDevMail = false;
 let currentStatus = 'OFFLINE';
 let initialInboxPromise = bootState.initialInboxPromise || null;
+let nextInboxCursor = null;
+let isLoadingMore = false;
+let totalInboxCount = 0;
 
 function resetActiveInboxState() {
   mails = [];
   filteredMails = [];
   selectedMail = null;
+  nextInboxCursor = null;
+  isLoadingMore = false;
+  totalInboxCount = 0;
   currentEmail = '';
   initialInboxPromise = null;
   closeModal();
@@ -307,6 +337,7 @@ function renderInboxList() {
   }
 
   elements.emailList.innerHTML = '';
+  const query = elements.emailSearch?.value.trim() || '';
   if (filteredMails.length === 0) {
     elements.emailList.innerHTML = `
       <div class="empty-state">
@@ -363,12 +394,28 @@ function renderInboxList() {
   });
 
   elements.emailList.appendChild(fragment);
+
+  if (!query && nextInboxCursor) {
+    const loadMoreWrap = document.createElement('div');
+    loadMoreWrap.className = 'mail-list-load-more';
+    loadMoreWrap.innerHTML = `
+      <button
+        type="button"
+        class="ghost-button load-more-button"
+        data-action="load-more"
+        ${isLoadingMore ? 'disabled' : ''}
+      >
+        ${escapeHTML(isLoadingMore ? t('button.loading_more') : t('button.load_more'))}
+      </button>
+    `;
+    elements.emailList.appendChild(loadMoreWrap);
+  }
 }
 
 function renderInbox() {
   syncSelectedMailState();
   applyFilter();
-  updateEmailCount(mails.length);
+  updateEmailCount(totalInboxCount);
   renderInboxList();
 }
 
@@ -726,6 +773,9 @@ async function refreshMail() {
           })
         : await fetchJson(`/inbox/${encodeURIComponent(currentEmail)}`);
     mails = Array.isArray(data.mails) ? data.mails : [];
+    nextInboxCursor = data.next_cursor || null;
+    totalInboxCount = Number.isFinite(Number(data.total_count)) ? Number(data.total_count) : mails.length;
+    isLoadingMore = false;
     showError('');
     setOnline();
     renderInbox();
@@ -745,6 +795,30 @@ async function refreshMail() {
   }
 }
 
+async function loadMoreMails() {
+  if (!currentEmail || !nextInboxCursor || isLoadingMore) {
+    return;
+  }
+
+  try {
+    isLoadingMore = true;
+    renderInbox();
+    const data = await fetchJson(
+      `/inbox/${encodeURIComponent(currentEmail)}?before=${encodeURIComponent(nextInboxCursor)}`
+    );
+    const nextMails = Array.isArray(data.mails) ? data.mails : [];
+    const existingIds = new Set(mails.map((mail) => mail.id));
+    mails = [...mails, ...nextMails.filter((mail) => !existingIds.has(mail.id))];
+    nextInboxCursor = data.next_cursor || null;
+    totalInboxCount = Number.isFinite(Number(data.total_count)) ? Number(data.total_count) : totalInboxCount;
+  } catch (error) {
+    toast(t('toast.load_more_failed', { message: error.message }), 'error');
+  } finally {
+    isLoadingMore = false;
+    renderInbox();
+  }
+}
+
 async function openMail(id) {
   try {
     const mail = await fetchJson(`/mail/${encodeURIComponent(id)}`);
@@ -760,6 +834,7 @@ async function removeMailFromView(id) {
   try {
     await deleteJson(`/inbox/${encodeURIComponent(currentEmail)}/${encodeURIComponent(id)}`);
     mails = mails.filter((mail) => mail.id !== id);
+    totalInboxCount = Math.max(0, totalInboxCount - 1);
     if (selectedMail?.id === id) {
       selectedMail = null;
       closeModal();
@@ -787,6 +862,7 @@ async function deleteAllEmails() {
   try {
     await deleteJson(`/inbox/${encodeURIComponent(currentEmail)}/mails`);
     mails = [];
+    totalInboxCount = 0;
     selectedMail = null;
     closeModal();
     renderInbox();
@@ -948,6 +1024,10 @@ function setupInboxActions() {
         removeMailFromView(id);
       }
 
+      if (action === 'load-more') {
+        loadMoreMails();
+      }
+
       return;
     }
 
@@ -1070,6 +1150,7 @@ function scheduleNonCritical(task) {
 
 async function init() {
   await initI18n(document);
+  initVisitorBadge();
   setSessionTimerVisibility(Boolean(currentEmail));
   setupDomainSelector();
   setupAutoRefresh();

@@ -1,9 +1,10 @@
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
-import { inboxExists } from '../repositories/mail.repo.js';
+import { inboxExists } from '../services/mail.service.js';
 import { persistParsedMail } from '../services/mail-processing.service.js';
+import { ENV } from '../config/env.js';
 
-const SMTP_PORT = Number(process.env.SMTP_PORT ?? 25);
+const SMTP_PORT = ENV.SMTP_PORT;
 
 const getEnvelopeRecipients = (rcptTo = []) =>
   [...new Set(
@@ -16,8 +17,28 @@ export const createSmtpServer = () =>
   new SMTPServer({
     disabledCommands: ['AUTH'],
     authOptional: true,
-    onRcptTo(address, session, callback) {
-      callback(null);
+    async onRcptTo(address, session, callback) {
+      try {
+        const recipient = String(address?.address || '').trim().toLowerCase();
+        if (!recipient) {
+          const error = new Error('Recipient address is required');
+          error.responseCode = 501;
+          callback(error);
+          return;
+        }
+
+        const exists = await inboxExists(recipient);
+        if (!exists) {
+          const error = new Error('Mailbox unavailable');
+          error.responseCode = 550;
+          callback(error);
+          return;
+        }
+
+        callback(null);
+      } catch (error) {
+        callback(error);
+      }
     },
     async onData(stream, session, callback) {
       try {
@@ -29,19 +50,7 @@ export const createSmtpServer = () =>
           return;
         }
 
-        const existingRecipients = [];
         for (const recipient of recipients) {
-          if (await inboxExists(recipient)) {
-            existingRecipients.push(recipient);
-          }
-        }
-
-        if (existingRecipients.length === 0) {
-          callback(null);
-          return;
-        }
-
-        for (const recipient of existingRecipients) {
           await persistParsedMail({
             to: recipient,
             from: parsed.from,
