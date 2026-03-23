@@ -57,7 +57,7 @@ npm start
 Default local services:
 
 - UI/API: `http://127.0.0.1:9001`
-- SMTP: `127.0.0.1:2525` or whatever `SMTP_PORT` is set to in `.env`
+- SMTP: `127.0.0.1:25` or whatever `SMTP_PORT` is set to in `.env`
 
 Current storage flow:
 
