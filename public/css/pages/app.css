@@ -2,6 +2,42 @@
   --sidebar-w: 320px;
 }
 
+.google-translate-host,
+#google_translate_element,
+#temp-mail-google-translate-element {
+  position: fixed;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+body {
+  top: 0 !important;
+}
+
+.skiptranslate,
+.goog-te-banner-frame,
+.goog-te-gadget,
+.goog-logo-link {
+  display: none !important;
+}
+
+.goog-te-combo {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+body > .skiptranslate {
+  display: none !important;
+}
+
+.theme-toggle-fab {
+  bottom: 4.25rem;
+}
+
 .topbar {
   position: relative;
   z-index: 10;
@@ -22,6 +58,8 @@
   gap: 8px;
   font-size: 18px;
   font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .topbar-logo-icon {
@@ -37,6 +75,13 @@
 
 .topbar-logo span {
   color: var(--text);
+}
+
+.topbar-logo:hover,
+.topbar-logo:visited,
+.topbar-logo:active {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .topbar-right {
@@ -135,6 +180,63 @@
   overflow: hidden;
   position: relative;
   z-index: 1;
+  min-height: 0;
+}
+
+.app-footer {
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  backdrop-filter: blur(16px);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.app-footer-copy,
+.app-footer-links {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-footer-copy {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.app-footer-sep {
+  opacity: 0.5;
+}
+
+.app-footer-links a {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.2s, opacity 0.2s;
+}
+
+.app-footer-links a:hover {
+  color: var(--accent);
+}
+
+.visitor-badge-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.visitor-badge {
+  display: block;
+  max-width: 100%;
+  height: 20px;
+  border-radius: 999px;
 }
 
 .sidebar {
@@ -145,6 +247,7 @@
   flex-direction: column;
   background: color-mix(in srgb, var(--surface) 60%, transparent);
   overflow: hidden;
+  min-height: 0;
 }
 
 .sidebar-header {
@@ -286,6 +389,7 @@
 .mail-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 .inbox-list {
@@ -453,6 +557,7 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .main-placeholder {
@@ -464,6 +569,8 @@
   gap: 12px;
   color: var(--text-muted);
   font-size: 14px;
+  text-align: center;
+  padding: 24px;
 }
 
 .main-placeholder-icon {
@@ -476,11 +583,48 @@
   opacity: 0.7;
 }
 
+#main-placeholder-body {
+  width: min(100%, 46ch);
+  margin: 0 auto;
+  line-height: 1.65;
+}
+
+.main-placeholder-actions {
+  display: flex;
+  gap: 0.9rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.placeholder-primary,
+.placeholder-secondary {
+  text-decoration: none;
+}
+
+.placeholder-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.app-shell.guest-mode .search-box-wrap,
+.app-shell.guest-mode .mail-search-wrap {
+  opacity: 0.55;
+}
+
+.app-shell.guest-mode #search-inbox,
+.app-shell.guest-mode #search-mail,
+.app-shell.guest-mode #domain-select {
+  pointer-events: none;
+}
+
 .inbox-viewer {
   flex: 1;
   display: none;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .inbox-viewer-header {
@@ -1028,6 +1172,15 @@
     --sidebar-w: 100%;
   }
 
+  .main-placeholder-actions {
+    flex-direction: column;
+  }
+
+  .placeholder-primary,
+  .placeholder-secondary {
+    width: 100%;
+  }
+
   .layout {
     flex-direction: column;
   }
@@ -1054,5 +1207,23 @@
 
   .topbar-language .language-trigger {
     min-width: 104px;
+  }
+
+  .app-footer {
+    height: auto;
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .app-footer-copy,
+  .app-footer-links {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+
+  .theme-toggle-fab {
+    bottom: 5.75rem;
   }
 }

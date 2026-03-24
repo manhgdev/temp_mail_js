@@ -15,6 +15,7 @@ import {
   requireUser,
   getClientIp
 } from '../helpers.js';
+import { ENV } from '../../config/env.js';
 import { checkRateLimit } from '../../services/rate-limit.service.js';
 
 /**
@@ -46,7 +47,7 @@ export const handleUserRoutes = async ({ url, method, pathname, request, respons
   if (method === 'GET' && pathname === '/user/inboxes') {
     const limitParam = url.searchParams.get('limit');
     const before = url.searchParams.get('before') || '';
-    const limit = limitParam === null ? 20 : Number(limitParam);
+    const limit = limitParam === null ? ENV.APP_INBOX_PAGE_SIZE : Number(limitParam);
 
     const result = await getUserInboxListPaginated(uid, { limit, before });
     const total = await countUserInboxes(uid);

@@ -1,4 +1,5 @@
-import { ensureFirebaseAuth } from '../core/firebase-client.js';
+import CONFIG from '../core/config.js';
+import { ensureFirebaseAuth, loadFirebaseConfig } from '../core/firebase-client.js';
 import { initI18n, t } from '../core/i18n.js';
 import '../core/theme.js';
 import {
@@ -17,6 +18,9 @@ let isFetchingInboxes = false;
 let mailCursor = null;
 let isFetchingMails = false;
 let activeMailId = null;
+let appInboxPageSize = 20;
+let isGuestMode = false;
+let appPollTimer = null;
 
 const api = async (method, path, body) => {
   const token = await window._getToken();
@@ -79,6 +83,135 @@ const formatDate = (value) => {
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 };
 
+const initVisitorBadge = () => {
+  const badge = document.getElementById('visitor-badge');
+  if (!badge) {
+    return;
+  }
+
+  const params = new URLSearchParams({
+    path: CONFIG.SITE_PATH,
+    label: 'VISITORS',
+    labelColor: '%23d9e3f0',
+    countColor: '%23263759',
+    style: 'plastic'
+  });
+
+  badge.addEventListener(
+    'error',
+    () => {
+      badge.closest('.visitor-badge-wrap')?.remove();
+    },
+    { once: true }
+  );
+  badge.src = `https://api.visitorbadge.io/api/visitors?${params.toString()}`;
+};
+
+const navigateToLogin = (tab = 'login') => {
+  window.location.href = `/login?tab=${encodeURIComponent(tab)}`;
+};
+
+const setGuestMode = (enabled) => {
+  isGuestMode = enabled;
+  document.body.classList.toggle('guest-mode', enabled);
+  const mainPlaceholder = document.getElementById('main-placeholder');
+  const inboxViewer = document.getElementById('inbox-viewer');
+  const placeholderActions = document.getElementById('main-placeholder-actions');
+  const searchInbox = document.getElementById('search-inbox');
+  const searchMail = document.getElementById('search-mail');
+  const domainSelect = document.getElementById('domain-select');
+  const clearInboxesBtn = document.getElementById('btn-clear-inboxes');
+
+  mainPlaceholder?.toggleAttribute('hidden', Boolean(selectedEmail));
+  inboxViewer?.toggleAttribute('hidden', enabled || !selectedEmail);
+  if (mainPlaceholder) {
+    mainPlaceholder.style.display = selectedEmail ? 'none' : 'flex';
+  }
+  if (inboxViewer) {
+    inboxViewer.style.display = enabled || !selectedEmail ? 'none' : 'flex';
+  }
+  placeholderActions?.toggleAttribute('hidden', !enabled);
+
+  const userName = document.getElementById('user-name');
+  const userAvatar = document.getElementById('user-avatar');
+  const logoutButton = document.getElementById('logout-button');
+
+  if (enabled) {
+    clearInterval(refreshInterval);
+    clearInterval(appPollTimer);
+    refreshInterval = null;
+    appPollTimer = null;
+    closeMailModal();
+    selectedEmail = null;
+    currentMails = [];
+    inboxes = [];
+
+    if (userName) {
+      userName.textContent = t('app.guest.user');
+    }
+    if (userAvatar) {
+      userAvatar.textContent = 'G';
+    }
+    if (logoutButton) {
+      logoutButton.textContent = t('app.action.login');
+    }
+    if (clearInboxesBtn) {
+      clearInboxesBtn.style.display = 'none';
+    }
+    if (searchInbox) {
+      searchInbox.value = '';
+      searchInbox.disabled = true;
+    }
+    if (searchMail) {
+      searchMail.value = '';
+      searchMail.disabled = true;
+    }
+    if (domainSelect) {
+      domainSelect.disabled = true;
+    }
+    renderInboxList();
+    return;
+  }
+
+  if (logoutButton) {
+    logoutButton.textContent = t('app.action.logout');
+  }
+  if (searchInbox) {
+    searchInbox.disabled = false;
+  }
+  if (searchMail) {
+    searchMail.disabled = false;
+  }
+  if (domainSelect) {
+    domainSelect.disabled = false;
+  }
+  mainPlaceholder?.toggleAttribute('hidden', Boolean(selectedEmail));
+  inboxViewer?.toggleAttribute('hidden', !selectedEmail);
+  if (mainPlaceholder) {
+    mainPlaceholder.style.display = selectedEmail ? 'none' : 'flex';
+  }
+  if (inboxViewer) {
+    inboxViewer.style.display = selectedEmail ? 'flex' : 'none';
+  }
+};
+
+const startAppPolling = () => {
+  if (appPollTimer) {
+    clearInterval(appPollTimer);
+  }
+
+  appPollTimer = window.setInterval(() => {
+    if (isGuestMode) {
+      return;
+    }
+
+    loadInboxList();
+    if (selectedEmail) {
+      loadMails(selectedEmail);
+    }
+  }, 20000);
+};
+
 const renderInboxList = () => {
   const el = document.getElementById('inbox-list');
   const query = (document.getElementById('search-inbox')?.value || '').toLowerCase().trim();
@@ -93,8 +226,8 @@ const renderInboxList = () => {
     el.innerHTML = `
       <div class="inbox-empty">
         <div class="inbox-empty-icon">✉️</div>
-        <div class="inbox-empty-title">${t('app.inboxes.empty_title')}</div>
-        <div>${t('app.inboxes.empty_body')}</div>
+        <div class="inbox-empty-title">${t(isGuestMode ? 'app.guest.inboxes_empty_title' : 'app.inboxes.empty_title')}</div>
+        <div>${t(isGuestMode ? 'app.guest.inboxes_empty_body' : 'app.inboxes.empty_body')}</div>
       </div>
     `;
     return;
@@ -291,7 +424,7 @@ const loadInboxList = async (isLoadMore = false) => {
   isFetchingInboxes = true;
 
   try {
-    let url = '/user/inboxes?limit=20';
+    let url = `/user/inboxes?limit=${appInboxPageSize}`;
     if (isLoadMore && inboxCursor) {
       url += `&before=${encodeURIComponent(inboxCursor)}`;
     }
@@ -333,7 +466,7 @@ const loadMails = async (email, silent = false, isLoadMore = false) => {
   refreshBtn?.classList.add('spinning');
 
   try {
-    let url = `/inbox/${encodeURIComponent(email)}?limit=20`;
+    let url = `/inbox/${encodeURIComponent(email)}?limit=${appInboxPageSize}`;
     if (isLoadMore && mailCursor) {
       url += `&before=${encodeURIComponent(mailCursor)}`;
     }
@@ -377,6 +510,8 @@ const selectInbox = async (email) => {
   renderInboxList();
   document.getElementById('main-placeholder').style.display = 'none';
   document.getElementById('inbox-viewer').style.display = 'flex';
+  document.getElementById('main-placeholder')?.setAttribute('hidden', '');
+  document.getElementById('inbox-viewer')?.removeAttribute('hidden');
   document.getElementById('viewer-email').textContent = email;
   loadMails(email);
 
@@ -424,6 +559,11 @@ const loadDomainList = async () => {
 };
 
 const createEmail = async () => {
+  if (isGuestMode) {
+    navigateToLogin('register');
+    return;
+  }
+
   const btn = document.getElementById('btn-new-email');
   const domain = document.getElementById('domain-select')?.value || null;
   const originalInner = btn.innerHTML;
@@ -596,9 +736,14 @@ const copyEmail = () => {
 };
 
 const handleLogout = async () => {
+  if (isGuestMode) {
+    navigateToLogin('login');
+    return;
+  }
+
   try {
     await signOut(window._auth);
-    window.location.href = '/login';
+    setGuestMode(true);
   } catch {}
 };
 
@@ -619,12 +764,12 @@ const applyStaticTranslations = () => {
   document.getElementById('btn-clear-inboxes-label').textContent = t('app.action.delete_all');
   document.getElementById('btn-new-email-label').textContent = t('app.action.create');
   document.getElementById('search-inbox').placeholder = t('app.search.address');
-  document.getElementById('main-placeholder-title').textContent = t('app.placeholder.title');
-  document.getElementById('main-placeholder-body').textContent = t('app.placeholder.body');
+  document.getElementById('main-placeholder-title').textContent = t(isGuestMode ? 'app.guest.title' : 'app.placeholder.title');
+  document.getElementById('main-placeholder-body').textContent = t(isGuestMode ? 'app.guest.body' : 'app.placeholder.body');
   document.getElementById('btn-test-label').textContent = t('app.action.test_mail');
   document.getElementById('btn-copy-label').textContent = t('app.action.copy');
   document.getElementById('btn-clear-all-label').textContent = t('app.action.delete_all');
-  document.getElementById('search-mail').placeholder = t('app.search.mail');
+  document.getElementById('search-mail').placeholder = t('search.placeholder');
   document.getElementById('modal-title').textContent = t('app.modal.title');
   document.getElementById('modal-msg-prefix').textContent = t('app.modal.body_prefix');
   document.getElementById('modal-msg-suffix').textContent = t('app.modal.body_suffix');
@@ -633,12 +778,34 @@ const applyStaticTranslations = () => {
   document.getElementById('theme-toggle-label').textContent = t('app.theme');
   document.getElementById('page-title').textContent = t('app.page.title');
   document.getElementById('user-loading').textContent = t('app.user.loading');
-  document.getElementById('logout-button').textContent = t('app.action.logout');
+  document.getElementById('logout-button').textContent = t(isGuestMode ? 'app.action.login' : 'app.action.logout');
+  document.getElementById('btn-new-email-label').textContent = t('app.action.create');
+  document.getElementById('main-placeholder-create').textContent = t('app.action.create_account');
+  document.getElementById('main-placeholder-login').textContent = t('app.action.login');
+  if (isGuestMode) {
+    document.getElementById('user-name').textContent = t('app.guest.user');
+  }
+  document.querySelector('[data-i18n="footer.local_ui"]')?.replaceChildren(document.createTextNode(t('footer.local_ui')));
+  document.querySelector('[data-i18n="footer.version"]')?.replaceChildren(document.createTextNode(t('footer.version')));
+  document.querySelector('[data-i18n="footer.inbox"]')?.replaceChildren(document.createTextNode(t('footer.inbox')));
+  document.querySelector('[data-i18n="footer.submit_domain"]')?.replaceChildren(document.createTextNode(t('footer.submit_domain')));
+  document.querySelector('[data-i18n="footer.privacy"]')?.replaceChildren(document.createTextNode(t('footer.privacy')));
 };
 
 const initPage = async () => {
   await initI18n(document);
   applyStaticTranslations();
+  initVisitorBadge();
+  window.addEventListener('tempmail:languagechange', () => {
+    applyStaticTranslations();
+    renderInboxList();
+    renderMailsFilter();
+  });
+  const firebaseConfig = await loadFirebaseConfig().catch(() => null);
+  appInboxPageSize = Math.max(1, Number(firebaseConfig?.app_inbox_page_size || 20));
+  if (firebaseConfig?.is_production) {
+    document.getElementById('btn-test')?.remove();
+  }
 
   const auth = await ensureFirebaseAuth();
   try {
@@ -650,10 +817,11 @@ const initPage = async () => {
   await auth.authStateReady();
   const user = auth.currentUser;
   if (!user) {
-    window.location.href = '/login';
+    setGuestMode(true);
     return;
   }
 
+  setGuestMode(false);
   window._auth = auth;
   window._currentUser = user;
   window._getToken = async () => window._currentUser?.getIdToken() || null;
@@ -670,25 +838,20 @@ const initPage = async () => {
 
   onAuthStateChanged(auth, (currentUser) => {
     if (!currentUser) {
-      window.location.href = '/login';
+      window._currentUser = null;
+      setGuestMode(true);
       return;
     }
+    setGuestMode(false);
     window._currentUser = currentUser;
+    loadDomainList();
+    loadInboxList();
+    startAppPolling();
   });
 
   loadDomainList();
   loadInboxList();
-  window.addEventListener('tempmail:languagechange', () => {
-    applyStaticTranslations();
-    renderInboxList();
-    renderMailsFilter();
-  });
-  window.setInterval(() => {
-    loadInboxList();
-    if (selectedEmail) {
-      loadMails(selectedEmail);
-    }
-  }, 20000);
+  startAppPolling();
 
   document.getElementById('modal-bg')?.addEventListener('click', (event) => {
     if (event.target === event.currentTarget) {

@@ -118,6 +118,10 @@ const handleSystemRoutes = async ({ method, pathname, request, response }) => {
     await serveFile(request, response, path.join(pagesDir, 'login.html'));
     return true;
   }
+  if (pathname === '/forgot-password') {
+    await serveFile(request, response, path.join(pagesDir, 'forgot-password.html'));
+    return true;
+  }
   if (pathname === '/app') {
     await serveFile(request, response, path.join(pagesDir, 'app.html'));
     return true;
@@ -132,6 +136,10 @@ const handleSystemRoutes = async ({ method, pathname, request, response }) => {
   }
   if (pathname === '/privacy') {
     await serveFile(request, response, path.join(pagesDir, 'privacy.html'));
+    return true;
+  }
+  if (pathname === '/favicon.ico') {
+    await serveFile(request, response, path.join(publicDir, 'images', 'temp-mail-icon.png'));
     return true;
   }
   if (pathname === '/health') {

@@ -66,7 +66,9 @@ export const handleDomainRoutes = async ({ url, method, pathname, request, respo
   if (method === 'GET' && pathname === '/firebase/config') {
     sendJson(response, 200, {
       enabled: isFirebaseClientConfigured(),
-      config: isFirebaseClientConfigured() ? getFirebaseClientConfig() : null
+      config: isFirebaseClientConfigured() ? getFirebaseClientConfig() : null,
+      is_production: ENV.NODE_ENV === 'production',
+      app_inbox_page_size: ENV.APP_INBOX_PAGE_SIZE
     });
     return true;
   }

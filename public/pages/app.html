@@ -24,8 +24,8 @@
     <link rel="stylesheet" href="/css/core/base.css?v=20260324" />
     <link rel="stylesheet" href="/css/core/utilities.css?v=20260324" />
     <link rel="stylesheet" href="/css/core/components.css?v=20260324" />
-    <link rel="stylesheet" href="/css/shells/app-shell.css?v=20260324b" />
-    <link rel="stylesheet" href="/css/pages/app.css?v=20260324d" />
+    <link rel="stylesheet" href="/css/shells/app-shell.css?v=20260324c" />
+    <link rel="stylesheet" href="/css/pages/app.css?v=20260324o" />
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
   </head>
   <body class="app-shell bg-glow">
@@ -35,27 +35,27 @@
     </button>
 
     <header class="topbar">
-      <div class="topbar-logo">
+      <a href="/" class="topbar-logo">
         <div class="topbar-logo-icon">📬</div>
         <span>TempMail</span>
-      </div>
-      <div class="topbar-right">
-        <div class="language-dropdown topbar-language" data-language-switcher aria-label="Language switcher" data-i18n-aria-label="lang.switcher">
-          <button type="button" class="language-trigger" data-language-trigger aria-haspopup="menu" aria-expanded="false">
-            <span data-language-current>English</span>
-            <i class="fa-solid fa-chevron-down"></i>
+      </a>
+        <div class="topbar-right">
+          <div class="language-dropdown topbar-language" data-language-switcher aria-label="Language switcher" data-i18n-aria-label="lang.switcher">
+            <button type="button" class="language-trigger" data-language-trigger aria-haspopup="menu" aria-expanded="false">
+              <span data-language-current>English</span>
+              <i class="fa-solid fa-chevron-down"></i>
           </button>
           <div class="language-menu" data-language-menu role="menu"></div>
         </div>
-        <div class="app-toolbar">
-          <div class="user-chip">
-            <div class="user-avatar" id="user-avatar">?</div>
-            <span class="user-name" id="user-name"><span id="user-loading">Loading...</span></span>
+          <div class="app-toolbar">
+            <div class="user-chip">
+              <div class="user-avatar" id="user-avatar">?</div>
+              <span class="user-name" id="user-name"><span id="user-loading">Loading...</span></span>
+            </div>
+            <button class="btn-logout" id="logout-button" type="button" onclick="TempMailApp.handleLogout()">Logout</button>
           </div>
-          <button class="btn-logout" id="logout-button" type="button" onclick="TempMailApp.handleLogout()">Logout</button>
         </div>
-      </div>
-    </header>
+      </header>
 
     <div class="layout">
       <aside class="sidebar">
@@ -97,6 +97,10 @@
           <div class="main-placeholder-icon">📭</div>
           <div class="main-placeholder-title" id="main-placeholder-title">Choose an inbox to view mail</div>
           <div id="main-placeholder-body">Or create a new inbox to start receiving messages.</div>
+          <div class="main-placeholder-actions" id="main-placeholder-actions" hidden>
+            <a href="/login?tab=register" class="btn-new placeholder-primary" id="main-placeholder-create">Create account</a>
+            <a href="/login?tab=login" class="btn-logout placeholder-secondary" id="main-placeholder-login">Log in</a>
+          </div>
         </div>
 
         <div class="inbox-viewer" id="inbox-viewer">
@@ -134,6 +138,28 @@
       </main>
     </div>
 
+    <footer class="app-footer">
+      <div class="app-footer-copy">
+        <span data-i18n="footer.tempmail">TempMail</span>
+        <span class="app-footer-sep">•</span>
+        <span data-i18n="footer.version">March 2026 release</span>
+        <span class="app-footer-sep">•</span>
+        <span class="visitor-badge-wrap">
+          <img
+            id="visitor-badge"
+            class="visitor-badge"
+            alt="Visitor count"
+            loading="lazy"
+          />
+        </span>
+      </div>
+      <nav class="app-footer-links" aria-label="Footer links">
+        <a href="/" data-i18n="footer.inbox">Inbox</a>
+        <a href="/submit-domain" data-i18n="footer.submit_domain">Submit Domain</a>
+        <a href="/privacy" data-i18n="footer.privacy">Privacy Policy</a>
+      </nav>
+    </footer>
+
     <div class="toast" id="toast"></div>
 
     <div class="modal-bg" id="modal-bg">
@@ -151,6 +177,6 @@
       </div>
     </div>
 
-    <script type="module" src="/js/pages/app.js?v=20260324d"></script>
+    <script type="module" src="/js/pages/app.js?v=20260324k"></script>
   </body>
 </html>

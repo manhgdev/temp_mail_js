@@ -39,10 +39,10 @@
     </button>
 
     <header class="topbar">
-      <div class="topbar-logo">
+      <a href="/" class="topbar-logo">
         <div class="topbar-logo-icon">📬</div>
         <span>TempMail</span>
-      </div>
+      </a>
       <div class="topbar-right">
         <a class="topbar-link" href="/">Inbox</a>
         <a class="topbar-link topbar-link-primary" href="/submit-domain">Submit Domain</a>
@@ -76,6 +76,9 @@
               <div class="field">
                 <label for="login-password" data-i18n="common.password">Password</label>
                 <input id="login-password" class="input" type="password" placeholder="••••••••" data-i18n-placeholder="common.password_placeholder" required autocomplete="current-password" />
+              </div>
+              <div class="auth-meta">
+                <a href="/forgot-password" class="text-button" data-i18n="login.forgot.toggle">Forgot password?</a>
               </div>
               <button class="btn-primary auth-submit" type="submit" id="login-btn" data-i18n="login.action.submit">Login</button>
             </form>
@@ -132,6 +135,6 @@
 
     <div id="google-alert" class="global-alert"></div>
 
-    <script type="module" src="/js/pages/login.js?v=20260324"></script>
+    <script type="module" src="/js/pages/login.js?v=20260324c"></script>
   </body>
 </html>

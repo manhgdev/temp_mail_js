@@ -29,8 +29,8 @@ const elements = {
 const toastIcons = {
   success: 'fa-check',
   error: 'fa-xmark',
-  info: 'fa-info',
-  warning: 'fa-exclamation'
+  info: 'fa-arrows-rotate',
+  warning: 'fa-triangle-exclamation'
 };
 const RANDOM_DOMAIN_VALUE = '__random__';
 

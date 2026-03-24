@@ -33,7 +33,10 @@ export const ENV = {
   //
   MAIL_TTL: Number(process.env.MAIL_TTL ?? 0),
   MAX_INBOX: parsePositiveInt(process.env.MAX_INBOX, 50),
-  DEFAULT_INBOX_PAGE_SIZE: parsePositiveInt(process.env.DEFAULT_INBOX_PAGE_SIZE, 5),
+  ANYMOUSE_INBOX_PAGE_SIZE: parsePositiveInt(process.env.ANYMOUSE_INBOX_PAGE_SIZE, 5),
+  APP_INBOX_PAGE_SIZE: parsePositiveInt(process.env.APP_INBOX_PAGE_SIZE, 20),
+  GENERATE_RATE_LIMIT_MAX: parsePositiveInt(process.env.GENERATE_RATE_LIMIT_MAX, 10),
+  GENERATE_RATE_LIMIT_WINDOW_SECONDS: parsePositiveInt(process.env.GENERATE_RATE_LIMIT_WINDOW_SECONDS, 60),
   //
   DOMAINS: parseDomains(),
   DOMAIN_EXPIRY_SWEEP_INTERVAL_MS: Number(process.env.DOMAIN_EXPIRY_SWEEP_INTERVAL_MS ?? 300000),

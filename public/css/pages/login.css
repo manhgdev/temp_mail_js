@@ -20,6 +20,8 @@
   gap: 8px;
   font-size: 18px;
   font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
 }
 
 .topbar-logo-icon {
@@ -35,6 +37,13 @@
 
 .topbar-logo span {
   color: var(--text);
+}
+
+.topbar-logo:hover,
+.topbar-logo:visited,
+.topbar-logo:active {
+  color: var(--text);
+  text-decoration: none;
 }
 
 .topbar-right {
@@ -169,6 +178,70 @@
   padding: 12px;
   font-size: 15px;
   margin-top: 8px;
+}
+
+.auth-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px 0 4px;
+}
+
+.text-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.text-button:hover {
+  text-decoration: underline;
+}
+
+.forgot-password-box {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface2) 82%, transparent);
+}
+
+.forgot-password-title {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.forgot-password-subtitle {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.forgot-password-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.forgot-password-back {
+  display: flex;
+  justify-content: flex-end;
+  margin: -2px 0 10px;
+}
+
+.forgot-password-back .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.forgot-submit {
+  margin-top: 0;
 }
 
 .divider {
@@ -329,6 +402,15 @@
   .topbar-language .language-trigger {
     min-width: 104px;
     font-size: 0.75rem;
+  }
+
+  .forgot-password-actions {
+    flex-direction: column;
+  }
+
+  .forgot-submit,
+  .forgot-cancel {
+    width: 100%;
   }
 
   .auth-page-wrap {

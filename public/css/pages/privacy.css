@@ -70,12 +70,10 @@
 
 /* **General Privacy Policy Styles** */
 .privacy-policy {
-    max-width: 800px;
-    margin: 2rem auto;
     padding: 2rem 1.5rem;
     background-color: var(--surface);
-    border-radius: 8px;
-    box-shadow: var(--shadow);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
     border: 1px solid var(--border);
 }
 
@@ -113,6 +111,10 @@
 
 /* **Responsive Typography** */
 @media (max-width: 768px) {
+    .ascii-art {
+        font-size: 0.3rem;
+    }
+
     .privacy-policy {
         padding: 1.5rem 1rem;
     }
@@ -148,23 +150,62 @@
 }
 
 /* **Footer Styling (Consistency with Main Site)** */
-.footer-content {
-    max-width: 800px;
-    margin: 2rem auto;
-    padding: 1rem 0;
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
+.privacy-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 0.35rem 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    background: transparent;
 }
 
-.footer-link {
+.privacy-footer-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.privacy-footer-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.privacy-footer-copy {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.privacy-footer-links {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.privacy-footer-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    font-size: 0.84rem;
+    transition: color 0.2s ease, opacity 0.2s ease;
+    opacity: 0.88;
+}
+
+.privacy-footer-links a:hover {
     color: var(--primary);
     text-decoration: none;
-    margin: 0 0.5rem;
+    opacity: 1;
 }
 
-.footer-link:hover {
-    text-decoration: underline;
+.privacy-footer-links a[aria-current="page"] {
+    color: var(--primary);
+    opacity: 1;
 }
 
 pre {
@@ -178,4 +219,18 @@ a {
 
 a:hover {
     text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .privacy-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding-top: 0.75rem;
+    }
+
+    .privacy-footer-links {
+        justify-content: flex-start;
+        gap: 0.85rem;
+    }
 }

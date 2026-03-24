@@ -57,7 +57,11 @@ export const handleInboxRoutes = async ({ url, method, pathname, request, respon
   // GET /generate
   if (method === 'GET' && pathname === '/generate') {
     const ip = getClientIp(request);
-    const allowed = await checkRateLimit(`rl:generate:${ip}`, 10, 60); // 10 reqs / minute
+    const allowed = await checkRateLimit(
+      `rl:generate:${ip}`,
+      ENV.GENERATE_RATE_LIMIT_MAX,
+      ENV.GENERATE_RATE_LIMIT_WINDOW_SECONDS
+    );
     if (!allowed) {
       sendJson(response, 429, { error: 'Too many requests. Please try again later.' });
       return true;

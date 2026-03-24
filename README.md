@@ -1,66 +1,44 @@
 # TempMail
 
-TempMail is a single-process Node.js application that combines:
+TempMail is a single-process Node.js app for disposable inbox testing. It serves the frontend, receives mail over SMTP, stores mail metadata in Firestore, keeps hot data in Redis, and stores mail bodies and attachments in S3-compatible storage.
 
-- HTTP API + static frontend delivery
-- SMTP mail ingestion
-- temporary inbox generation
-- Firebase-authenticated user inbox management
-- Firestore-backed metadata
-- S3-backed mail body and attachments
-- Redis-backed hot cache
+The app does not use Express. HTTP routing is handled directly in `src/servers/http.js`, and SMTP runs in the same process through `src/servers/smtp.js`.
 
-The app does not use Express. HTTP routes are handled directly in `src/servers/http.js`, and SMTP runs in the same process via `src/servers/smtp.js`.
+## What It Does
 
-## Preview
-
-![Inbox preview](preview/inbox.png)
-
-![Submit domain preview](preview/submit-domain.png)
-
-![Admin dashboard preview](preview/dashboard.png)
-
-![User dashboard preview](preview/user-dashboard.png)
+- generate anonymous inboxes from active domains
+- receive real mail through SMTP
+- read inboxes and messages from the web UI
+- let signed-in users manage saved inboxes with Firebase Authentication
+- provide a guest-mode dashboard shell at `/app` before login
+- support password reset through `/forgot-password`
+- let users submit domains for review
+- let admins approve, reject, activate, deactivate, extend, update, and delete domains
 
 ## Current Pages
 
-- `/` — anonymous disposable inbox UI
-- `/login` — Firebase login/register page
-- `/app` — authenticated inbox dashboard
-- `/submit-domain` — public domain submission page
-- `/admin` — admin domain moderation UI
-- `/privacy` — privacy page
+- `/` anonymous inbox UI
+- `/login` login and register
+- `/forgot-password` password reset request page
+- `/app` user dashboard
+- `/submit-domain` public domain submission page
+- `/admin` admin UI
+- `/privacy` privacy page
 
-## Main Capabilities
+## Architecture
 
-- Generate anonymous inboxes from active domains
-- Receive real mail through SMTP
-- Read inboxes and mail details from the web UI
-- Manage user-owned inboxes after Firebase login
-- Submit domains for admin review
-- Approve, reject, activate, deactivate, extend, and delete managed domains from admin
-- Use `.env` domains in local/dev and Firestore-managed domains in production
-
-## Runtime Architecture
+```text
+routes -> services -> repositories -> Redis / Firestore / S3
+```
 
 ```text
 src/
 ├── config/
 │   └── env.js
-├── constants/
-├── models/
 ├── repositories/
-│   ├── domain.repo.js
-│   ├── inbox-meta.repo.js
-│   ├── mail-cache.repo.js
-│   ├── mail-content.repo.js
-│   ├── mail-meta.repo.js
-│   ├── user-inbox.repo.js
-│   └── user.repo.js
 ├── servers/
 │   ├── http.js
 │   ├── smtp.js
-│   ├── helpers.js
 │   └── routes/
 │       ├── admin.routes.js
 │       ├── dev.routes.js
@@ -68,24 +46,7 @@ src/
 │       ├── inbox.routes.js
 │       └── user.routes.js
 ├── services/
-│   ├── domain-expiry.service.js
-│   ├── domain.service.js
-│   ├── firebase-admin.js
-│   ├── inbox.service.js
-│   ├── mail-processing.service.js
-│   ├── mail.service.js
-│   ├── rate-limit.service.js
-│   ├── redis.js
-│   ├── s3.js
-│   └── user.service.js
-├── utils/
 └── index.js
-```
-
-Backend flow follows this shape:
-
-```text
-routes -> services -> repositories -> Redis / Firestore / S3
 ```
 
 ## Frontend Structure
@@ -95,6 +56,7 @@ public/
 ├── pages/
 │   ├── index.html
 │   ├── login.html
+│   ├── forgot-password.html
 │   ├── app.html
 │   ├── submit-domain.html
 │   ├── admin.html
@@ -116,22 +78,24 @@ public/
 
 Notes:
 
-- `index`, `login`, `app`, and `submit-domain` use the shared theme system and i18n bundles.
+- `index`, `login`, `forgot-password`, `app`, and `submit-domain` use shared theme + i18n.
 - `admin` and `privacy` are English-only.
-- Static pages are served from `public/pages`, while static asset fallback is served from `public`.
+- `/app` supports guest mode: the dashboard shell still renders before login, but user actions redirect to login/register when needed.
 
 ## Route Map
 
-### Public + system
+### Public pages and system routes
 
 - `GET /`
 - `GET /login`
+- `GET /forgot-password`
 - `GET /app`
 - `GET /submit-domain`
 - `GET /admin`
 - `GET /privacy`
 - `GET /health`
 - `GET /ready`
+- `GET /favicon.ico`
 
 ### Domain routes
 
@@ -139,6 +103,12 @@ Notes:
 - `GET /firebase/config`
 - `POST /domains/submit`
 - `GET /submit-domain/config`
+
+`GET /firebase/config` is also used by the frontend to read:
+
+- Firebase client config
+- `is_production`
+- `app_inbox_page_size`
 
 ### Anonymous inbox routes
 
@@ -164,7 +134,7 @@ All `/user/*` routes require a valid Firebase ID token.
 
 ### Admin routes
 
-All `/admin/*` API routes require a Firebase ID token with `admin=true`.
+All `/admin/*` API routes require a valid Firebase ID token with `admin=true`.
 
 - `GET /admin/submissions`
 - `POST /admin/submissions/:id/approve`
@@ -181,7 +151,7 @@ All `/admin/*` API routes require a Firebase ID token with `admin=true`.
 
 - `POST /dev/send-test-mail`
 
-This route is only enabled when `NODE_ENV !== 'production'`.
+This route is only intended for non-production use. The `/app` UI hides the test-mail button when `is_production` is true.
 
 ## Local Setup
 
@@ -193,24 +163,22 @@ npm install
 
 ### 2. Create `.env`
 
-Start from `.env.example`:
-
 ```bash
 cp .env.example .env
 ```
 
-### 3. Configure required services
+### 3. Configure services
 
-At minimum, local runtime expects:
+Minimum runtime dependencies:
 
 - Redis
 - S3-compatible object storage
-- Firebase Admin credentials for backend access
+- Firebase Admin credentials
 
-If you want login, authenticated dashboard, or admin UI, also configure:
+If you use login, reset password, Google sign-in, or admin UI, also configure:
 
-- Firebase client credentials
-- Firebase Authentication providers you use in the UI
+- Firebase client config
+- Firebase Authentication providers
 
 ### 4. Start the app
 
@@ -218,7 +186,7 @@ If you want login, authenticated dashboard, or admin UI, also configure:
 npm start
 ```
 
-For development with auto-reload:
+For development:
 
 ```bash
 npm run dev
@@ -229,9 +197,9 @@ Default local endpoints:
 - HTTP: `http://127.0.0.1:9001`
 - SMTP: `127.0.0.1:25`
 
-## Useful Local Commands
+## Useful Commands
 
-Health check:
+Health checks:
 
 ```bash
 curl http://127.0.0.1:9001/health
@@ -250,127 +218,74 @@ Read an inbox:
 curl http://127.0.0.1:9001/inbox/your-mail@tempmail.local
 ```
 
-Send a local dev mail:
+Send a local test mail:
 
 ```bash
 npm run test:smtp -- --to your-mail@tempmail.local --subject "hello" --body "local smtp test"
 ```
 
-## Environment Variables
+## Important Environment Variables
 
-All examples below come from `.env.example` and `src/config/env.js`.
-
-### App
+### General
 
 ```env
 NODE_ENV=development
 API_PORT=9001
 SMTP_PORT=25
-MAIL_TTL=0
-MAX_INBOX=50
-DEFAULT_INBOX_PAGE_SIZE=5
+APP_BASE_URL=http://127.0.0.1:9001
 ```
 
-### Redis
+### Inbox pagination and limits
 
 ```env
-REDIS_URL=
-REDIS_HOST=127.0.0.1
-REDIS_PORT=6379
+ANYMOUSE_INBOX_PAGE_SIZE=5
+APP_INBOX_PAGE_SIZE=20
+GENERATE_RATE_LIMIT_MAX=10
+GENERATE_RATE_LIMIT_WINDOW_SECONDS=60
+MAX_INBOX=...
 ```
 
-### S3 / object storage
+Notes:
 
-```env
-S3_ENDPOINT=http://127.0.0.1:9000
-S3_ACCESS_KEY=
-S3_SECRET_KEY=
-S3_BUCKET=temp-mail
-```
+- `ANYMOUSE_INBOX_PAGE_SIZE` controls anonymous inbox page size.
+- `APP_INBOX_PAGE_SIZE` controls signed-in dashboard inbox page size.
+- `GENERATE_RATE_LIMIT_MAX` and `GENERATE_RATE_LIMIT_WINDOW_SECONDS` control `/generate` rate limiting.
 
-### Domain source
+### Firebase
 
-```env
-DOMAINS=tempmail.local,tempinbox.local,tempdrop.local
-DOMAIN_EXPIRY_SWEEP_INTERVAL_MS=300000
-```
+Backend and frontend both depend on Firebase-related env values defined in `src/config/env.js`.
 
-Behavior:
+At minimum, configure:
 
-- local/dev reads active domains from `DOMAINS`
-- production expects managed domains in Firestore
-- `DOMAIN_EXPIRY_SWEEP_INTERVAL_MS` controls the periodic expiry sweep
+- Firebase Admin credentials for backend verification
+- Firebase web config for client login flows
 
-### Mail cache
+### Storage and cache
 
-```env
-MAIL_CACHE_PREFIX_VERSION=v1
-MAIL_CACHE_INBOX_EXISTS_TTL_SECONDS=60
-MAIL_CACHE_INBOX_LIST_TTL_SECONDS=30
-MAIL_CACHE_DETAIL_TTL_SECONDS=300
-```
+Configure:
 
-### Firebase Admin
+- Redis connection
+- S3 bucket / endpoint / credentials
+- Firestore / Google Cloud project access
 
-```env
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nREPLACE_ME\n-----END PRIVATE KEY-----\n"
-```
+## Manual Test Checklist
 
-This is required for backend Firestore access and Firebase token verification.
+- `/` can generate an inbox, refresh, auto-refresh, open mail, and delete mail
+- `/login` can log in with email/password
+- `/login` can register
+- `/login` can sign in with Google
+- `/forgot-password` can request a reset mail
+- `/app` guest mode renders correctly before login
+- `/app` can create inboxes after login
+- `/app` can load inbox list, mail list, and mail modal
+- `/app` auto-refresh does not break the current mail view
+- `/app` logout returns to guest mode instead of redirecting away
+- `/submit-domain` works
+- `/admin` works
+- `/privacy` loads without asset issues
 
-### Firebase Client
+## Notes
 
-```env
-FIREBASE_API_KEY=
-FIREBASE_AUTH_DOMAIN=
-FIREBASE_APP_ID=
-```
-
-This is required by the frontend login/app/admin flows via `GET /firebase/config`.
-
-## Local vs production domain behavior
-
-### Development
-
-- active inbox domains come from `.env` `DOMAINS`
-- `/dev/send-test-mail` is enabled
-- domain submission/admin screens may still depend on Firebase Admin being configured
-
-### Production
-
-- active domains are expected to come from Firestore-managed domain records
-- `/dev/send-test-mail` is disabled
-- `/submit-domain` creates pending submissions only
-- admin must approve and activate domains
-
-## Firebase Notes
-
-If you want `/login`, `/app`, and `/admin` to work correctly:
-
-1. Create a Firebase project.
-2. Enable Firestore.
-3. Enable Firebase Authentication.
-4. Enable the sign-in methods you want to use in the UI.
-5. Add Firebase Admin credentials to `.env`.
-6. Add Firebase client credentials to `.env`.
-7. For admin access, set a custom claim `admin=true` on the admin user.
-
-## Process Management
-
-This repo includes `pm2.config.json` for PM2-based production startup.
-
-Example:
-
-```bash
-pm2 start pm2.config.json
-```
-
-## Scripts
-
-From `package.json`:
-
-- `npm start` — start HTTP + SMTP + domain expiry sweep
-- `npm run dev` — start with nodemon
-- `npm run test:smtp` — send a local SMTP test mail
+- Static frontend files are served directly from `public/`.
+- Page routes map to files in `public/pages/`.
+- The favicon is served from `public/images/temp-mail-icon.png`.

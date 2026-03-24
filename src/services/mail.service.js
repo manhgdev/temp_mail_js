@@ -39,7 +39,7 @@ import { getPreview } from '../utils/preview.js';
 
 const MAIL_STORE_CONFIG_ERROR =
   'Firebase Admin is required for inbox/mail metadata storage';
-const DEFAULT_INBOX_PAGE_SIZE = ENV.DEFAULT_INBOX_PAGE_SIZE;
+const ANYMOUSE_INBOX_PAGE_SIZE = ENV.ANYMOUSE_INBOX_PAGE_SIZE;
 const MAX_INBOX = ENV.MAX_INBOX;
 
 const ensureMailStoreConfigured = () => {
@@ -217,12 +217,12 @@ export const fetchInboxMails = async (email, options = {}) => {
     return null;
   }
 
-  const requestedLimit = Number(options.limit ?? DEFAULT_INBOX_PAGE_SIZE);
+  const requestedLimit = Number(options.limit ?? ANYMOUSE_INBOX_PAGE_SIZE);
   const limit = Number.isFinite(requestedLimit)
     ? Math.max(1, Math.floor(requestedLimit))
-    : DEFAULT_INBOX_PAGE_SIZE;
+    : ANYMOUSE_INBOX_PAGE_SIZE;
   const before = String(options.before || '').trim();
-  const canUseDefaultCache = !before && limit === DEFAULT_INBOX_PAGE_SIZE;
+  const canUseDefaultCache = !before && limit === ANYMOUSE_INBOX_PAGE_SIZE;
 
   if (canUseDefaultCache) {
     const cached = await getCachedInboxList(normalized);

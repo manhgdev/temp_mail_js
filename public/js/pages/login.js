@@ -189,6 +189,11 @@ const initPage = async () => {
   document.querySelectorAll('[data-auth-tab]').forEach((button) => {
     button.addEventListener('click', () => switchTab(button.dataset.authTab));
   });
+
+  const requestedTab = new URLSearchParams(window.location.search).get('tab');
+  if (requestedTab === 'login' || requestedTab === 'register') {
+    switchTab(requestedTab);
+  }
 };
 
 window.TempMailLogin = { switchTab };
