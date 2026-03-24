@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#2563EB" />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem('theme');
+          const theme =
+            savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch {}
+      })();
+    </script>
+    <title id="page-title">Dashboard — TempMail</title>
+    <meta name="description" content="Manage your temporary inboxes." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/core/tokens.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/reset.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/base.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/utilities.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/components.css?v=20260324" />
+    <link rel="stylesheet" href="/css/shells/app-shell.css?v=20260324b" />
+    <link rel="stylesheet" href="/css/pages/app.css?v=20260324d" />
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+  </head>
+  <body class="app-shell bg-glow">
+    <button type="button" id="theme-toggle" class="theme-toggle-fab" aria-label="Toggle theme" title="Toggle theme">
+      <i class="fa-solid fa-moon"></i>
+      <span class="theme-toggle-label" id="theme-toggle-label">Theme</span>
+    </button>
+
+    <header class="topbar">
+      <div class="topbar-logo">
+        <div class="topbar-logo-icon">📬</div>
+        <span>TempMail</span>
+      </div>
+      <div class="topbar-right">
+        <div class="language-dropdown topbar-language" data-language-switcher aria-label="Language switcher" data-i18n-aria-label="lang.switcher">
+          <button type="button" class="language-trigger" data-language-trigger aria-haspopup="menu" aria-expanded="false">
+            <span data-language-current>English</span>
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+          <div class="language-menu" data-language-menu role="menu"></div>
+        </div>
+        <div class="app-toolbar">
+          <div class="user-chip">
+            <div class="user-avatar" id="user-avatar">?</div>
+            <span class="user-name" id="user-name"><span id="user-loading">Loading...</span></span>
+          </div>
+          <button class="btn-logout" id="logout-button" type="button" onclick="TempMailApp.handleLogout()">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-header-top">
+            <span class="sidebar-title">
+              <span id="sidebar-title-text">MY INBOXES</span>
+              <span id="inboxes-count" class="sidebar-title-count"></span>
+            </span>
+            <button id="btn-clear-inboxes" class="sidebar-inline-delete" type="button" onclick="TempMailApp.deleteAllInboxes()" title="Delete all inboxes">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span id="btn-clear-inboxes-label">Delete All</span>
+            </button>
+          </div>
+          <div class="sidebar-row">
+            <select id="domain-select" class="domain-select">
+              <option value="">Random Domain</option>
+            </select>
+            <button class="btn-new" id="btn-new-email" type="button" onclick="TempMailApp.createEmail()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span id="btn-new-email-label">Create</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="search-box-wrap">
+          <input type="text" class="search-input" id="search-inbox" placeholder="Search inbox address..." oninput="TempMailApp.renderInboxList()" />
+        </div>
+
+        <div class="inbox-list" id="inbox-list" onscroll="TempMailApp.handleInboxScroll(this)">
+          <div class="skeleton sk-card"></div>
+          <div class="skeleton sk-card"></div>
+          <div class="skeleton sk-card"></div>
+        </div>
+      </aside>
+
+      <main class="main" id="main-area">
+        <div class="main-placeholder" id="main-placeholder">
+          <div class="main-placeholder-icon">📭</div>
+          <div class="main-placeholder-title" id="main-placeholder-title">Choose an inbox to view mail</div>
+          <div id="main-placeholder-body">Or create a new inbox to start receiving messages.</div>
+        </div>
+
+        <div class="inbox-viewer" id="inbox-viewer">
+          <div class="inbox-viewer-header">
+            <div class="inbox-viewer-email" id="viewer-email"></div>
+            <div id="mails-count"></div>
+            <button class="btn-test" id="btn-test" type="button" onclick="TempMailApp.sendTestMail()">
+              🚀 <span id="btn-test-label">Test Mail</span>
+            </button>
+            <button class="btn-copy" id="btn-copy" type="button" onclick="TempMailApp.copyEmail()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>
+              </svg>
+              <span id="btn-copy-label">Copy</span>
+            </button>
+            <button class="btn-refresh" id="btn-refresh" type="button" onclick="TempMailApp.refreshInbox()" title="Refresh">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+            </button>
+            <button class="btn-inline-danger" id="btn-clear-all" type="button" onclick="TempMailApp.deleteAllMails()" title="Delete all mails">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              <span id="btn-clear-all-label">Delete All</span>
+            </button>
+          </div>
+
+          <div class="mail-search-wrap">
+            <input type="text" class="search-input" id="search-mail" placeholder="Search mail..." oninput="TempMailApp.renderMailsFilter()" />
+          </div>
+
+          <div class="mail-list" id="mail-list" onscroll="TempMailApp.handleMailScroll(this)"></div>
+        </div>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <div class="modal-bg" id="modal-bg">
+      <div class="modal">
+        <h3 id="modal-title">Delete this inbox?</h3>
+        <p>
+          <span id="modal-msg-prefix">All messages inside</span>
+          <span class="modal-em" id="modal-email"></span>
+          <span id="modal-msg-suffix"></span>
+        </p>
+        <div class="modal-actions">
+          <button class="btn-cancel" id="modal-cancel" type="button" onclick="TempMailApp.closeModal()">Cancel</button>
+          <button class="btn-confirm-del" id="modal-confirm" type="button" onclick="TempMailApp.confirmDelete()">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/js/pages/app.js?v=20260324d"></script>
+  </body>
+</html>

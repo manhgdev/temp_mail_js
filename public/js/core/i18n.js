@@ -1,5 +1,5 @@
 import CONFIG from './config.js';
-import enTranslations from './translations.en.js';
+import enTranslations from '../i18n/translations.en.js';
 
 const STORAGE_KEY = 'temp_mail_language';
 const GOOGLE_STORAGE_KEY = 'temp_mail_google_language';
@@ -51,7 +51,7 @@ const ensureLanguageLoaded = async (lang) => {
   }
 
   if (!viTranslationsReady) {
-    viTranslationsReady = import('./translations.vi.js').then((module) => {
+    viTranslationsReady = import('../i18n/translations.vi.js').then((module) => {
       translations.vi = module.default || {};
     });
   }

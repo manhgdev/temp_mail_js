@@ -5,12 +5,13 @@ const FIRESTORE_INBOXES_COLLECTION = 'mail_inboxes';
 const getInboxDoc = (email) =>
   getFirebaseFirestore().collection(FIRESTORE_INBOXES_COLLECTION).doc(email.toLowerCase());
 
-export const createInboxMeta = async (email) => {
+export const createInboxMeta = async (email, owner_uid = null) => {
   const normalized = email.toLowerCase();
 
   try {
     await getInboxDoc(normalized).create({
       email: normalized,
+      owner_uid: owner_uid,
       active: true,
       created_at: new Date(),
       updated_at: new Date()
@@ -23,6 +24,11 @@ export const createInboxMeta = async (email) => {
 
     throw error;
   }
+};
+
+export const getInboxMeta = async (email) => {
+  const snapshot = await getInboxDoc(email).get();
+  return snapshot.exists ? snapshot.data() : null;
 };
 
 export const inboxMetaExists = async (email) => {

@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { ENV } from '../config/env.js';
 
 const hasValue = (value) => Boolean(String(value || '').trim());
@@ -32,6 +32,7 @@ const getApp = () => {
 
 export const getFirebaseFirestore = () => getFirestore(getApp());
 export const getFirebaseAuth = () => getAuth(getApp());
+export { FieldValue };
 
 export const isFirebaseClientConfigured = () =>
   hasValue(ENV.FIREBASE_API_KEY) &&
@@ -52,5 +53,10 @@ export const verifyAdminIdToken = async (idToken) => {
     throw new Error('Admin privileges are required');
   }
 
+  return decodedToken;
+};
+
+export const verifyUserIdToken = async (idToken) => {
+  const decodedToken = await getFirebaseAuth().verifyIdToken(idToken);
   return decodedToken;
 };

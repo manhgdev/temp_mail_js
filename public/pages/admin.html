@@ -7,12 +7,27 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self' https://www.gstatic.com; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; font-src 'self' data:; img-src 'self' data: https:;"
     />
+    <meta name="theme-color" content="#2563EB" />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem('theme');
+          const theme =
+            savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch {}
+      })();
+    </script>
     <title>TempMail Admin</title>
-    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/pages/admin.css?v=20260324" />
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
   </head>
-  <body>
+  <body class="admin-shell">
     <div class="app-container admin-app admin-shell">
+      <button type="button" id="theme-toggle" class="theme-toggle-fab" aria-label="Toggle theme" title="Toggle theme">
+        <i class="fa-solid fa-moon"></i>
+        <span class="theme-toggle-label">Theme</span>
+      </button>
       <main class="main-content admin-main">
         <div id="admin-alert" class="error-message hidden"></div>
 
@@ -182,6 +197,7 @@
       </div>
     </div>
 
-    <script type="module" src="/js/admin.js"></script>
+    <script type="module" src="/js/core/theme.js?v=20260324"></script>
+    <script type="module" src="/js/pages/admin.js?v=20260324"></script>
   </body>
 </html>

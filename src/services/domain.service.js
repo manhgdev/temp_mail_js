@@ -33,6 +33,7 @@ export const isProductionDomainSource = () => ENV.NODE_ENV === 'production';
 
 export const getActiveDomains = async () => {
   if (!isProductionDomainSource()) {
+    // console.log('[domain-service] Dev mode: available domains =', ENV.DOMAINS);
     return [...ENV.DOMAINS];
   }
 

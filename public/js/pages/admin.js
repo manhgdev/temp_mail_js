@@ -1,10 +1,10 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
 import {
-  getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut
 } from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+import { fetchJson } from '../core/api-client.js';
+import { ensureFirebaseAuth } from '../core/firebase-client.js';
 
 const elements = {
   authCard: document.getElementById('admin-auth-card'),
@@ -79,16 +79,6 @@ const openEditDomainModal = (domain) => {
   }
   elements.addDomainModal.classList.remove('hidden');
   elements.addDomainForm.elements.domain.focus();
-};
-
-const fetchJson = async (path, options = {}) => {
-  const response = await fetch(path, options);
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || `Request failed with status ${response.status}`);
-  }
-
-  return data;
 };
 
 const getAdminHeaders = async () => {
@@ -245,13 +235,7 @@ const loadAdminData = async () => {
 };
 
 const initFirebase = async () => {
-  const payload = await fetchJson('/firebase/config');
-  if (!payload.enabled || !payload.config) {
-    throw new Error('Firebase client config is missing');
-  }
-
-  const app = initializeApp(payload.config);
-  auth = getAuth(app);
+  auth = await ensureFirebaseAuth();
 
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;

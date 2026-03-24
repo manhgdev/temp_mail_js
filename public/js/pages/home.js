@@ -1,5 +1,6 @@
-import CONFIG from './config.js';
-import { getLanguage, initI18n, t } from './i18n.js';
+import CONFIG from '../core/config.js';
+import { getLanguage, initI18n, t } from '../core/i18n.js';
+import '../core/theme.js';
 
 const $ = (id) => document.getElementById(id);
 const elements = {

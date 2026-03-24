@@ -1,4 +1,5 @@
-import { applyTranslations, initI18n, t } from './i18n.js';
+import { applyTranslations, initI18n, t } from '../core/i18n.js';
+import '../core/theme.js';
 
 const form = document.getElementById('submit-domain-form');
 const alertBox = document.getElementById('submit-domain-alert');

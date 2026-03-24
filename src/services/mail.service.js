@@ -4,8 +4,11 @@ import {
   inboxMetaExists,
   touchInboxMeta,
   clearInboxMeta,
-  deleteInboxMeta
+  deleteInboxMeta,
+  getInboxMeta
 } from '../repositories/inbox-meta.repo.js';
+import { updateUserInbox } from '../repositories/user-inbox.repo.js';
+import { FieldValue } from './firebase-admin.js';
 import {
   countInboxMailMeta,
   deleteMailMetaBatch,
@@ -68,11 +71,11 @@ const normalizeEmailAddress = (addressLike) => {
 const encodeMailCursor = (mail) =>
   mail ? JSON.stringify({ created_at: mail.created_at, id: mail.id }) : null;
 
-export const createInbox = async (email) => {
+export const createInbox = async (email, owner_uid = null) => {
   ensureMailStoreConfigured();
 
   const normalized = email.toLowerCase();
-  const created = await createInboxMeta(normalized);
+  const created = await createInboxMeta(normalized, owner_uid);
 
   if (created) {
     await Promise.all([
@@ -98,6 +101,19 @@ export const inboxExists = async (email) => {
   const exists = await inboxMetaExists(normalized);
   await setCachedInboxExists(normalized, exists);
   return exists;
+};
+
+export const checkInboxOwnership = async (email, uid) => {
+  ensureMailStoreConfigured();
+  const normalized = email.toLowerCase();
+  const meta = await getInboxMeta(normalized);
+  if (!meta) return true; // Nếu inbox không tồn tại, cho qua để route tự báo 404
+  
+  if (meta.owner_uid && meta.owner_uid !== uid) {
+    console.error(`[ACL Deny] email=${normalized}, meta.owner_uid=${meta.owner_uid}, request.uid=${uid}`);
+    return false; // Phải là owner (nếu có)
+  }
+  return true; // Anonymous inbox (ko có owner_uid) hoặc chính chủ
 };
 
 export const createIncomingMail = async ({ to, from, subject, text, html, attachments = [] }) => {
@@ -148,6 +164,18 @@ export const createIncomingMail = async ({ to, from, subject, text, html, attach
   await touchInboxMeta(normalizedTo, { last_mail_at: new Date(mail.created_at) }).catch((error) => {
     console.error(`[mail-service] failed to update inbox metadata for ${normalizedTo}`, error);
   });
+
+  // If inbox has an owner, update their user_inbox unread count and updated_at
+  const inboxMeta = await getInboxMeta(normalizedTo).catch(() => null);
+  if (inboxMeta && inboxMeta.owner_uid) {
+    await updateUserInbox(inboxMeta.owner_uid, normalizedTo, {
+      updated_at: new Date(),
+      last_mail_at: new Date(mail.created_at),
+      unread_count: FieldValue.increment(1)
+    }).catch((error) => {
+      console.error(`[mail-service] failed to update user inbox for ${normalizedTo}`, error);
+    });
+  }
 
   const overflowMails = await listInboxOverflowMailMeta(normalizedTo, MAX_INBOX);
   if (overflowMails.length > 0) {

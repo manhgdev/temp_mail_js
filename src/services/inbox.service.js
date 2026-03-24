@@ -6,7 +6,8 @@ import {
   deleteInboxById,
   deleteMailByEmail,
   fetchInboxMails,
-  fetchMailById
+  fetchMailById,
+  checkInboxOwnership
 } from './mail.service.js';
 
 const MAX_GENERATE_ATTEMPTS = 10;
@@ -35,4 +36,4 @@ export const generateInboxEmail = async (domain) => {
   throw new Error('Failed to allocate a unique inbox');
 };
 
-export { fetchInboxMails, fetchMailById, deleteInboxById, deleteInboxAllByEmail, deleteMailByEmail };
+export { fetchInboxMails, fetchMailById, deleteInboxById, deleteInboxAllByEmail, deleteMailByEmail, checkInboxOwnership };

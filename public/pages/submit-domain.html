@@ -7,11 +7,22 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; connect-src 'self' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://*.gstatic.com; script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://*.gstatic.com; frame-src https://translate.google.com https://translate.googleapis.com; font-src 'self' data: https://*.gstatic.com; img-src 'self' data: https:;"
     />
+    <meta name="theme-color" content="#2563EB" />
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem('theme');
+          const theme =
+            savedTheme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch {}
+      })();
+    </script>
     <title data-i18n="submit.page.title">Submit Domain</title>
-    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/css/pages/submit-domain.css?v=20260324" />
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
   </head>
-  <body>
+  <body class="marketing-shell">
     <div class="app-container admin-app submit-shell">
       <div class="language-dropdown" data-language-switcher aria-label="Language switcher" data-i18n-aria-label="lang.switcher">
         <button
@@ -26,6 +37,10 @@
         </button>
         <div class="language-menu" data-language-menu role="menu"></div>
       </div>
+      <button type="button" id="theme-toggle" class="theme-toggle-fab" aria-label="Toggle theme" title="Toggle theme">
+        <i class="fa-solid fa-moon"></i>
+        <span class="theme-toggle-label" data-i18n="app.theme">Theme</span>
+      </button>
 
       <main class="main-content submit-main">
         <section class="card admin-nav-shell">
@@ -98,6 +113,6 @@
       </main>
     </div>
 
-    <script type="module" src="/js/domain-submit.js"></script>
+    <script type="module" src="/js/pages/submit-domain.js?v=20260324"></script>
   </body>
 </html>
