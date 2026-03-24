@@ -4,16 +4,26 @@ TempMail is a single-process Node.js app for disposable inbox testing. It serves
 
 The app does not use Express. HTTP routing is handled directly in `src/servers/http.js`, and SMTP runs in the same process through `src/servers/smtp.js`.
 
-## What It Does
+## Preview
+
+![Inbox preview](preview/inbox.png)
+
+![Submit domain preview](preview/submit-domain.png)
+
+![Admin dashboard preview](preview/dashboard.png)
+
+![User dashboard preview](preview/user-dashboard.png)
+
+## Main Features
 
 - generate anonymous inboxes from active domains
 - receive real mail through SMTP
 - read inboxes and messages from the web UI
-- let signed-in users manage saved inboxes with Firebase Authentication
-- provide a guest-mode dashboard shell at `/app` before login
+- manage saved inboxes after Firebase login
+- render `/app` in guest mode before login
 - support password reset through `/forgot-password`
-- let users submit domains for review
-- let admins approve, reject, activate, deactivate, extend, update, and delete domains
+- submit domains for admin review
+- moderate domains from the admin UI
 
 ## Current Pages
 
@@ -25,7 +35,9 @@ The app does not use Express. HTTP routing is handled directly in `src/servers/h
 - `/admin` admin UI
 - `/privacy` privacy page
 
-## Architecture
+## Project Structure
+
+### Backend
 
 ```text
 routes -> services -> repositories -> Redis / Firestore / S3
@@ -49,7 +61,7 @@ src/
 └── index.js
 ```
 
-## Frontend Structure
+### Frontend
 
 ```text
 public/
@@ -80,11 +92,12 @@ Notes:
 
 - `index`, `login`, `forgot-password`, `app`, and `submit-domain` use shared theme + i18n.
 - `admin` and `privacy` are English-only.
-- `/app` supports guest mode: the dashboard shell still renders before login, but user actions redirect to login/register when needed.
+- static pages are served from `public/pages`
+- static assets are served directly from `public/`
 
 ## Route Map
 
-### Public pages and system routes
+### Public Pages And System Routes
 
 - `GET /`
 - `GET /login`
@@ -97,20 +110,20 @@ Notes:
 - `GET /ready`
 - `GET /favicon.ico`
 
-### Domain routes
+### Domain Routes
 
 - `GET /domains`
 - `GET /firebase/config`
 - `POST /domains/submit`
 - `GET /submit-domain/config`
 
-`GET /firebase/config` is also used by the frontend to read:
+`GET /firebase/config` is used by the frontend for:
 
 - Firebase client config
 - `is_production`
 - `app_inbox_page_size`
 
-### Anonymous inbox routes
+### Anonymous Inbox Routes
 
 - `GET /generate`
 - `GET /inbox/:email`
@@ -121,7 +134,7 @@ Notes:
 - `DELETE /inbox/:email/:id`
 - `DELETE /inbox/:email/mails`
 
-### User routes
+### User Routes
 
 All `/user/*` routes require a valid Firebase ID token.
 
@@ -132,7 +145,7 @@ All `/user/*` routes require a valid Firebase ID token.
 - `DELETE /user/inboxes/:email`
 - `DELETE /user/inboxes`
 
-### Admin routes
+### Admin Routes
 
 All `/admin/*` API routes require a valid Firebase ID token with `admin=true`.
 
@@ -147,15 +160,15 @@ All `/admin/*` API routes require a valid Firebase ID token with `admin=true`.
 - `POST /admin/domains/:id/update`
 - `POST /admin/domains/:id/extend`
 
-### Dev route
+### Dev Route
 
 - `POST /dev/send-test-mail`
 
-This route is only intended for non-production use. The `/app` UI hides the test-mail button when `is_production` is true.
+The `/app` UI hides the test-mail button when `is_production` is true.
 
 ## Local Setup
 
-### 1. Install dependencies
+### 1. Install Dependencies
 
 ```bash
 npm install
@@ -167,7 +180,7 @@ npm install
 cp .env.example .env
 ```
 
-### 3. Configure services
+### 3. Configure Services
 
 Minimum runtime dependencies:
 
@@ -180,7 +193,7 @@ If you use login, reset password, Google sign-in, or admin UI, also configure:
 - Firebase client config
 - Firebase Authentication providers
 
-### 4. Start the app
+### 4. Start The App
 
 ```bash
 npm start
@@ -235,7 +248,7 @@ SMTP_PORT=25
 APP_BASE_URL=http://127.0.0.1:9001
 ```
 
-### Inbox pagination and limits
+### Inbox Pagination And Limits
 
 ```env
 ANYMOUSE_INBOX_PAGE_SIZE=5
@@ -245,11 +258,11 @@ GENERATE_RATE_LIMIT_WINDOW_SECONDS=60
 MAX_INBOX=...
 ```
 
-Notes:
+Meaning:
 
-- `ANYMOUSE_INBOX_PAGE_SIZE` controls anonymous inbox page size.
-- `APP_INBOX_PAGE_SIZE` controls signed-in dashboard inbox page size.
-- `GENERATE_RATE_LIMIT_MAX` and `GENERATE_RATE_LIMIT_WINDOW_SECONDS` control `/generate` rate limiting.
+- `ANYMOUSE_INBOX_PAGE_SIZE` controls anonymous inbox page size
+- `APP_INBOX_PAGE_SIZE` controls signed-in dashboard page size
+- `GENERATE_RATE_LIMIT_MAX` and `GENERATE_RATE_LIMIT_WINDOW_SECONDS` control `/generate` rate limiting
 
 ### Firebase
 
@@ -260,7 +273,7 @@ At minimum, configure:
 - Firebase Admin credentials for backend verification
 - Firebase web config for client login flows
 
-### Storage and cache
+### Storage And Cache
 
 Configure:
 
@@ -279,13 +292,12 @@ Configure:
 - `/app` can create inboxes after login
 - `/app` can load inbox list, mail list, and mail modal
 - `/app` auto-refresh does not break the current mail view
-- `/app` logout returns to guest mode instead of redirecting away
+- `/app` logout returns to guest mode
 - `/submit-domain` works
 - `/admin` works
 - `/privacy` loads without asset issues
 
 ## Notes
 
-- Static frontend files are served directly from `public/`.
-- Page routes map to files in `public/pages/`.
-- The favicon is served from `public/images/temp-mail-icon.png`.
+- favicon is served from `public/images/temp-mail-icon.png`
+- page routes are mapped in `src/servers/http.js`

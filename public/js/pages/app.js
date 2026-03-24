@@ -130,7 +130,10 @@ const setGuestMode = (enabled) => {
   if (inboxViewer) {
     inboxViewer.style.display = enabled || !selectedEmail ? 'none' : 'flex';
   }
-  placeholderActions?.toggleAttribute('hidden', !enabled);
+  if (placeholderActions) {
+    placeholderActions.toggleAttribute('hidden', !enabled);
+    placeholderActions.style.display = enabled ? 'flex' : 'none';
+  }
 
   const userName = document.getElementById('user-name');
   const userAvatar = document.getElementById('user-avatar');
