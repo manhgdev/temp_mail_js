@@ -30,6 +30,42 @@ export const getUser = async (uid) => {
   return serializeUser(snapshot);
 };
 
+export const listUsers = async ({ search = '', limit = 100 } = {}) => {
+  const snapshot = await getFirebaseFirestore().collection(USERS_COLLECTION).get();
+  const normalizedSearch = String(search || '').trim().toLowerCase();
+
+  const users = snapshot.docs
+    .map(serializeUser)
+    .filter((user) => {
+      if (!normalizedSearch) return true;
+      const haystacks = [user.email, user.display_name, user.uid]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+      return haystacks.some((value) => value.includes(normalizedSearch));
+    })
+    .sort((left, right) => {
+      const leftTime = new Date(left.updated_at || left.created_at || 0).getTime();
+      const rightTime = new Date(right.updated_at || right.created_at || 0).getTime();
+      return rightTime - leftTime;
+    });
+
+  if (limit === null || limit === undefined || limit === Infinity) {
+    return users;
+  }
+
+  const normalizedLimit = Number(limit);
+  if (!Number.isFinite(normalizedLimit)) {
+    return users;
+  }
+
+  return users.slice(0, Math.max(1, normalizedLimit));
+};
+
+export const countUsers = async () => {
+  const snapshot = await getFirebaseFirestore().collection(USERS_COLLECTION).count().get();
+  return snapshot.data().count || 0;
+};
+
 export const upsertUser = async (uid, data) => {
   const ref = getUserDoc(uid);
   const now = new Date();
@@ -45,4 +81,21 @@ export const upsertUser = async (uid, data) => {
   );
 
   return getUser(uid);
+};
+
+export const updateUserProfile = async (uid, updates) => {
+  const ref = getUserDoc(uid);
+  await ref.set(
+    {
+      ...updates,
+      updated_at: new Date()
+    },
+    { merge: true }
+  );
+
+  return getUser(uid);
+};
+
+export const deleteUserProfile = async (uid) => {
+  await getUserDoc(uid).delete();
 };

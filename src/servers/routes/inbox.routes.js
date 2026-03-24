@@ -7,8 +7,8 @@ import {
   fetchMailById,
   generateInboxEmail,
   checkInboxOwnership
-} from '../../services/inbox.service.js';
-import { inboxExists } from '../../services/mail.service.js';
+} from '../../services/anonymous/anonymous-inbox.service.js';
+import { inboxExists } from '../../services/anonymous/anonymous-mail.service.js';
 import { extractObjectKeyFromUrl, getObject } from '../../services/s3.js';
 import { ENV } from '../../config/env.js';
 import {

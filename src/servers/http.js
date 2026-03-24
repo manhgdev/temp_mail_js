@@ -7,7 +7,7 @@ import { createBrotliCompress, createGzip } from 'node:zlib';
 import redis from '../services/redis.js';
 import { ENV } from '../config/env.js';
 import { sendJson, notFound } from './helpers.js';
-import { handleInboxRoutes } from './routes/inbox.routes.js';
+import { handleAnonymousRoutes } from './routes/anonymous.routes.js';
 import { handleAdminRoutes } from './routes/admin.routes.js';
 import { handleDomainRoutes } from './routes/domain.routes.js';
 import { handleDevRoutes } from './routes/dev.routes.js';
@@ -173,7 +173,7 @@ const routeHandlers = [
   handleAdminRoutes,
   handleDomainRoutes,
   handleDevRoutes,
-  handleInboxRoutes,
+  handleAnonymousRoutes,
   handleSystemRoutes
 ];
 

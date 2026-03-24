@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self' https://www.gstatic.com; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; font-src 'self' data:; img-src 'self' data: https:;"
-    />
+      <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'self' https://www.gstatic.com; connect-src 'self' https://www.gstatic.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; font-src 'self' data:; img-src 'self' data: https:;"
+      />
     <meta name="theme-color" content="#2563EB" />
     <script>
       (() => {
@@ -19,185 +19,551 @@
       })();
     </script>
     <title>TempMail Admin</title>
-    <link rel="stylesheet" href="/css/pages/admin.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/tokens.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/reset.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/base.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/utilities.css?v=20260324" />
+    <link rel="stylesheet" href="/css/core/components.css?v=20260324" />
+    <link rel="stylesheet" href="/css/shells/admin-shell.css?v=20260324c" />
+    <link rel="stylesheet" href="/css/pages/admin.css?v=20260324am" />
     <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
   </head>
-  <body class="admin-shell">
-    <div class="app-container admin-app admin-shell">
-      <button type="button" id="theme-toggle" class="theme-toggle-fab" aria-label="Toggle theme" title="Toggle theme">
-        <i class="fa-solid fa-moon"></i>
-        <span class="theme-toggle-label">Theme</span>
-      </button>
-      <main class="main-content admin-main">
-        <div id="admin-alert" class="error-message hidden"></div>
+  <body class="admin-shell bg-glow">
+    <button type="button" id="theme-toggle" class="theme-toggle-fab" aria-label="Toggle theme" title="Toggle theme">
+      <i class="fa-solid fa-moon"></i>
+      <span class="theme-toggle-label">Theme</span>
+    </button>
 
-        <section class="card admin-nav-shell">
-          <div class="admin-nav">
-            <div class="admin-nav-brand">
-              <i class="fa-solid fa-shield-halved"></i>
-              <div class="admin-nav-brand-copy">
-                <span>TempMail Admin</span>
-                <small id="admin-user-label">Signed out</small>
-              </div>
-            </div>
-            <nav class="admin-nav-links" aria-label="Admin navigation">
-              <a class="admin-nav-link" href="/">Inbox</a>
-              <a class="admin-nav-link" href="/submit-domain">Submit Domain</a>
-              <a class="admin-nav-link active" href="/admin">Admin</a>
-            </nav>
-            <div class="admin-nav-actions hidden" id="admin-panel">
-              <button id="admin-open-add-domain" class="primary-button">
-                <i class="fa-solid fa-plus"></i><span>Add</span>
-              </button>
-              <button id="admin-refresh" class="ghost-button">
-                <i class="fa-solid fa-rotate"></i><span>Refresh</span>
-              </button>
-              <button id="admin-logout" class="warning-button">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i><span>Logout</span>
-              </button>
-            </div>
-          </div>
-        </section>
+    <header class="admin-topbar">
+      <div class="admin-topbar-left">
+        <button
+          class="admin-mobile-menu-button"
+          id="admin-mobile-menu-button"
+          type="button"
+          aria-label="Open admin navigation"
+          title="Open menu"
+        >
+          <i class="fa-solid fa-bars"></i>
+        </button>
 
-        <section class="card admin-login-card admin-compact-card" id="admin-auth-card">
-          <div class="admin-login-head">
-            <div class="admin-toolbar-title">
-              <i class="fa-solid fa-shield-halved"></i>
-              <h1>TempMail Admin</h1>
-            </div>
-            <p>Sign in to the admin Dashboard. The domain becomes available for generation immediately after creation.</p>
+        <a href="/" class="admin-brand">
+          <span class="admin-brand-icon">🛡️</span>
+          <span class="admin-brand-copy">
+            <strong>TempMail Admin</strong>
+          </span>
+        </a>
+      </div>
+
+      <div class="admin-topbar-actions">
+        <nav class="admin-top-links" aria-label="Admin links">
+          <a href="/">Inbox</a>
+          <a href="/submit-domain">Submit Domain</a>
+        </nav>
+
+        <div class="admin-user-chip">
+          <div class="admin-user-avatar" id="admin-user-avatar">A</div>
+          <span id="admin-user-label">Signed out</span>
+        </div>
+
+        <button class="admin-logout-button" id="admin-logout" type="button">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="admin-layout" id="admin-layout">
+      <button
+        type="button"
+        id="admin-sidebar-backdrop"
+        class="admin-sidebar-backdrop hidden"
+        aria-label="Close admin navigation"
+      ></button>
+
+      <aside class="admin-sidebar" id="admin-sidebar">
+        <div class="admin-sidebar-head">
+          <button class="admin-sidebar-toggle" id="admin-sidebar-toggle" type="button" aria-label="Toggle sidebar" title="Toggle sidebar">
+            <i class="fa-solid fa-bars"></i>
+          </button>
+          <div class="admin-sidebar-title">
+            <span>Dashboard</span>
           </div>
-          <form id="admin-login-form" class="admin-form-grid">
-            <label>
-              Email
-              <input type="email" name="email" required placeholder="admin@example.com" />
-            </label>
-            <label>
-              Password
-              <input type="password" name="password" required placeholder="••••••••" />
-            </label>
-            <div class="admin-login-actions">
-              <button type="submit" class="primary-button admin-login-button">
+        </div>
+
+        <nav class="admin-sidebar-links" aria-label="Admin destinations">
+          <a href="/">
+            <i class="fa-solid fa-inbox"></i>
+            <span>Inbox</span>
+          </a>
+          <a href="/submit-domain">
+            <i class="fa-solid fa-paper-plane"></i>
+            <span>Submit Domain</span>
+          </a>
+        </nav>
+
+        <nav class="admin-sidebar-nav" aria-label="Admin sections">
+          <button class="admin-nav-item is-active" data-section="overview" type="button">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Overview</span>
+          </button>
+          <button class="admin-nav-item" data-section="domains" type="button">
+            <i class="fa-solid fa-globe"></i>
+            <span>Domains</span>
+          </button>
+          <button class="admin-nav-item" data-section="users" type="button">
+            <i class="fa-solid fa-users"></i>
+            <span>Users</span>
+          </button>
+          <button class="admin-nav-item" data-section="mails" type="button">
+            <i class="fa-solid fa-envelope-open-text"></i>
+            <span>Mails</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="admin-workspace">
+        <div id="admin-alert" class="admin-alert hidden"></div>
+
+        <section
+          class="admin-auth-view"
+          id="admin-auth-view"
+          data-unauth-kicker="Restricted access"
+          data-unauth-title="Sign in to TempMail Admin"
+          data-unauth-body="Login to access the admin panel."
+          data-unauth-login-label="Log in"
+          data-unauth-register-label="Create account"
+          data-unauth-login-href="/login?tab=login&redirect=%2Fadmin"
+          data-unauth-register-href="/login?tab=register&redirect=%2Fadmin"
+          data-unauthorized-kicker="Permission required"
+          data-unauthorized-title="This account is not an admin"
+          data-unauthorized-body="Login to access the admin panel."
+          data-unauthorized-login-label="Switch account"
+          data-unauthorized-register-label="Back to login"
+          data-unauthorized-login-href="/login?tab=login&redirect=%2Fadmin"
+          data-unauthorized-register-href="/login?tab=login&redirect=%2Fadmin"
+        >
+          <section class="card admin-login-card">
+            <div class="admin-login-head">
+              <div class="admin-section-kicker" id="admin-auth-kicker">Restricted access</div>
+              <h1 id="admin-auth-title">Sign in to TempMail Admin</h1>
+              <p id="admin-auth-body">Login to access the admin panel.</p>
+            </div>
+            <div class="admin-login-actions admin-auth-actions">
+              <a href="/login?tab=login&redirect=%2Fadmin" class="admin-primary-button" id="admin-auth-login">
                 <i class="fa-solid fa-right-to-bracket"></i>
-                <span>Sign in</span>
-              </button>
+                <span>Log in</span>
+              </a>
+              <a href="/login?tab=register&redirect=%2Fadmin" class="admin-secondary-button" id="admin-auth-register">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Create account</span>
+              </a>
             </div>
-          </form>
+          </section>
         </section>
 
-        <section class="hidden admin-stats-grid" id="admin-stats">
-          <article class="card admin-stat-card">
-            <span class="admin-section-kicker">Pending</span>
-            <strong id="admin-pending-count">0</strong>
-            <p>Domains waiting for review</p>
-          </article>
-          <article class="card admin-stat-card">
-            <span class="admin-section-kicker">Active</span>
-            <strong id="admin-active-count">0</strong>
-            <p>Domains available for generation</p>
-          </article>
-          <article class="card admin-stat-card">
-            <span class="admin-section-kicker">Inactive</span>
-            <strong id="admin-inactive-count">0</strong>
-            <p>Managed but currently disabled</p>
-          </article>
-        </section>
-
-        <section class="admin-panels">
-          <section class="card hidden admin-data-card" id="pending-submissions-card">
-            <div class="section-heading admin-section-head">
+        <section class="admin-dashboard hidden" id="admin-dashboard">
+          <section class="admin-panel is-active" data-panel="overview">
+            <div class="admin-page-head">
               <div>
-                <h2>Pending submissions</h2>
-                <p>Public-submitted domains stay inactive until approved here.</p>
+                <h1>Overview</h1>
+                <p>Operations snapshot for domains, accounts, and inbox ownership.</p>
+              </div>
+              <div class="admin-page-actions">
+                <button id="admin-refresh" class="admin-secondary-button" type="button">
+                  <i class="fa-solid fa-rotate"></i>
+                  <span>Refresh</span>
+                </button>
               </div>
             </div>
-            <div class="table-container admin-table-wrap admin-table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Domain</th>
-                    <th>Submitted</th>
-                    <th>IP</th>
-                    <th>Note</th>
-                    <th>Expires at</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="pending-submissions-body"></tbody>
-              </table>
+
+            <div class="admin-stats-grid">
+              <article class="card admin-stat-card">
+                <span class="admin-stat-label">Pending domains</span>
+                <strong id="admin-pending-count">0</strong>
+                <p>Waiting for approval</p>
+              </article>
+              <article class="card admin-stat-card">
+                <span class="admin-stat-label">Active domains</span>
+                <strong id="admin-active-count">0</strong>
+                <p>Available in production</p>
+              </article>
+              <article class="card admin-stat-card">
+                <span class="admin-stat-label">Inactive domains</span>
+                <strong id="admin-inactive-count">0</strong>
+                <p>Disabled or expired</p>
+              </article>
+              <article class="card admin-stat-card">
+                <span class="admin-stat-label">Registered users</span>
+                <strong id="admin-total-users-count">0</strong>
+                <p>Accounts in Firebase</p>
+              </article>
+            </div>
+
+            <div class="admin-overview-grid">
+              <article class="card admin-overview-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2>Workspaces</h2>
+                    <p>Jump straight into the area you need.</p>
+                  </div>
+                </div>
+                <div class="admin-overview-links">
+                  <button class="admin-secondary-button" data-open-section="domains" type="button">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>Open domains</span>
+                  </button>
+                  <button class="admin-secondary-button" data-open-section="users" type="button">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Open users</span>
+                  </button>
+                </div>
+                <div class="admin-overview-note">
+                  <span class="admin-overview-chip">
+                    <i class="fa-solid fa-envelope-open-text"></i>
+                    <span>Select an email in Users to unlock Mails.</span>
+                  </span>
+                </div>
+              </article>
+
+              <article class="card admin-overview-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2>Current scope</h2>
+                    <p>Admin actions available in this build.</p>
+                  </div>
+                </div>
+                <div class="admin-overview-list">
+                  <div class="admin-overview-list-item">
+                    <strong>Domains</strong>
+                    <span>Approve, edit, activate, deactivate, extend, delete</span>
+                  </div>
+                  <div class="admin-overview-list-item">
+                    <strong>Users</strong>
+                    <span>Search, edit, delete accounts and owned emails</span>
+                  </div>
+                  <div class="admin-overview-list-item">
+                    <strong>Mails</strong>
+                    <span>Inspect message history and open full text body</span>
+                  </div>
+                </div>
+              </article>
             </div>
           </section>
 
-          <section class="card hidden admin-data-card" id="managed-domains-card">
-            <div class="section-heading admin-section-head">
+          <section class="admin-panel" data-panel="domains">
+            <div class="admin-page-head">
               <div>
-                <h2>Managed domains</h2>
-                <p>Only active, non-expired domains are exposed to inbox generation in production.</p>
+                <h1>Domains</h1>
+              </div>
+              <div class="admin-page-actions">
+                <button id="admin-open-add-domain" class="admin-primary-button" type="button">
+                  <i class="fa-solid fa-plus"></i>
+                  <span>Add domain</span>
+                </button>
+                <button class="admin-secondary-button" data-open-section="overview" type="button">
+                  <i class="fa-solid fa-chart-line"></i>
+                  <span>Overview</span>
+                </button>
               </div>
             </div>
-            <div class="table-container admin-table-wrap admin-table-shell">
-              <table>
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Domain</th>
-                    <th>Status</th>
-                    <th>Expires at</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="managed-domains-body"></tbody>
-              </table>
+
+            <div class="admin-domain-grid">
+              <section class="card admin-data-card" id="pending-submissions-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2>Pending submissions</h2>
+                    <p>Public-submitted domains stay inactive until approved here.</p>
+                  </div>
+                </div>
+                <div class="admin-table-wrap admin-table-shell">
+                  <table>
+                    <colgroup>
+                      <col class="admin-users-col-user" />
+                      <col class="admin-users-col-email" />
+                      <col class="admin-users-col-created" />
+                      <col class="admin-users-col-actions" />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Domain</th>
+                        <th>Submitted</th>
+                        <th>IP</th>
+                        <th>Note</th>
+                        <th>Expires at</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pending-submissions-body"></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="card admin-data-card" id="managed-domains-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2>Managed domains</h2>
+                    <p>Only active, non-expired domains are exposed to inbox generation in production.</p>
+                  </div>
+                </div>
+                <div class="admin-table-wrap admin-table-shell">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Domain</th>
+                        <th>Status</th>
+                        <th>Expires at</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="managed-domains-body"></tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-panel" data-panel="users">
+            <div class="admin-page-head">
+              <div>
+                <div class="admin-section-kicker">Users</div>
+                <h1>Users</h1>
+                <p>Registered accounts and the email addresses owned by each user.</p>
+              </div>
+            </div>
+
+            <div class="admin-overview-grid admin-user-grid">
+              <section class="card admin-data-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2>Registered users</h2>
+                    <p>Accounts created through the public login flow.</p>
+                  </div>
+                </div>
+                <div class="admin-toolbar-row">
+                  <input
+                    id="admin-user-search"
+                    class="select-input admin-search-input"
+                    type="search"
+                    placeholder="Search users by email or name"
+                  />
+                  <button id="admin-users-refresh" class="admin-secondary-button" type="button">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Refresh</span>
+                  </button>
+                </div>
+                <div class="admin-table-wrap admin-table-shell">
+                  <table id="admin-users-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Email</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-users-body"></tbody>
+                  </table>
+                </div>
+                <div class="admin-load-more-wrap">
+                  <button id="admin-users-load-more" class="admin-secondary-button hidden" type="button">
+                    <i class="fa-solid fa-angles-down"></i>
+                    <span>Load more</span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="card admin-data-card">
+                <div class="admin-card-head admin-card-head-compact">
+                  <div>
+                    <h2 id="admin-user-emails-title">User emails</h2>
+                    <p id="admin-user-emails-subtitle">Select a user to inspect their managed email addresses.</p>
+                  </div>
+                  <div class="admin-page-actions">
+                    <button id="admin-user-emails-delete-all" class="admin-secondary-button" type="button">
+                      <i class="fa-solid fa-trash"></i>
+                      <span>Delete all</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="admin-table-wrap admin-table-shell">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Email</th>
+                        <th>Domain</th>
+                        <th>Last mail</th>
+                        <th>Total mails</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-user-emails-body"></tbody>
+                  </table>
+                </div>
+                <div class="admin-load-more-wrap">
+                  <button id="admin-user-emails-load-more" class="admin-secondary-button hidden" type="button">
+                    <i class="fa-solid fa-angles-down"></i>
+                    <span>Load more</span>
+                  </button>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-panel" data-panel="mails">
+            <div class="admin-page-head">
+              <div>
+                <div class="admin-section-kicker">Mails</div>
+                <h1>Mails</h1>
+                <p>Inspect mail flowing into the selected email address.</p>
+              </div>
+            </div>
+
+            <div class="admin-panel-stack">
+              <section class="card admin-data-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2 id="admin-email-mails-title">Email mails</h2>
+                    <p id="admin-email-mails-subtitle">Open a user email from the Users section to inspect its messages here.</p>
+                  </div>
+                </div>
+                <div class="admin-table-wrap admin-table-shell">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>From</th>
+                        <th>Subject</th>
+                        <th>Received</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-email-mails-body"></tbody>
+                  </table>
+                </div>
+                <div class="admin-load-more-wrap">
+                  <button id="admin-email-mails-load-more" class="admin-secondary-button hidden" type="button">
+                    <i class="fa-solid fa-angles-down"></i>
+                    <span>Load more</span>
+                  </button>
+                </div>
+              </section>
+
+              <section class="card admin-data-card">
+                <div class="admin-card-head">
+                  <div>
+                    <h2>Mail detail</h2>
+                    <p id="admin-mail-detail-meta">Select a message to view preview and body text.</p>
+                  </div>
+                </div>
+                <div id="admin-mail-detail" class="admin-mail-detail empty-state">
+                  <i class="fa-solid fa-envelope-open-text"></i>
+                  <h3>No mail selected</h3>
+                  <p>Choose a message from the table above to inspect its details.</p>
+                </div>
+              </section>
             </div>
           </section>
         </section>
       </main>
+    </div>
 
-      <div class="email-modal hidden" id="admin-add-domain-modal">
-        <div class="email-modal-content admin-modal-content">
-          <div class="modal-header admin-modal-header">
-            <div class="admin-modal-copy">
-              <span class="admin-modal-kicker">Domain management</span>
-              <h2>Add domain</h2>
-            </div>
-            <button class="close-btn" type="button" id="admin-close-add-domain" aria-label="Close">
-              <i class="fa-solid fa-xmark"></i>
+    <footer class="app-footer admin-footer">
+      <div class="app-footer-copy admin-footer-copy">
+        <span>TempMail</span>
+        <span class="app-footer-sep admin-footer-sep">•</span>
+        <span>March 2026 release</span>
+        <span class="app-footer-sep admin-footer-sep">•</span>
+        <span class="visitor-badge-wrap">
+          <img
+            id="visitor-badge"
+            class="visitor-badge"
+            alt="Visitor count"
+            loading="lazy"
+          />
+        </span>
+      </div>
+      <nav class="app-footer-links admin-footer-links" aria-label="Footer links">
+        <a href="/">Inbox</a>
+        <a href="/submit-domain">Submit Domain</a>
+        <a href="/privacy">Privacy Policy</a>
+      </nav>
+    </footer>
+
+    <div class="email-modal hidden" id="admin-add-domain-modal">
+      <div class="email-modal-content admin-modal-content">
+        <div class="modal-header admin-modal-header">
+          <div class="admin-modal-copy">
+            <span class="admin-modal-kicker">Domain management</span>
+            <h2>Add domain</h2>
+          </div>
+          <button class="close-btn" type="button" id="admin-close-add-domain" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <form id="admin-add-domain-form" class="admin-form-grid admin-modal-form">
+          <input type="hidden" name="domain_id" />
+          <label>
+            Domain
+            <input type="text" name="domain" required placeholder="mail.example.com" />
+          </label>
+          <label>
+            Expires at
+            <input type="datetime-local" name="expires_at" />
+          </label>
+          <label class="admin-toggle-field" for="admin-domain-active">
+            <span class="admin-toggle-copy">
+              <strong>Active on create</strong>
+            </span>
+            <span class="admin-toggle-shell">
+              <input id="admin-domain-active" type="checkbox" name="active" checked />
+              <span class="admin-toggle-track">
+                <span class="admin-toggle-knob"></span>
+              </span>
+            </span>
+          </label>
+          <div class="admin-modal-footer">
+            <button class="admin-secondary-button" type="button" id="admin-cancel-add-domain">Cancel</button>
+            <button type="submit" class="admin-primary-button" id="admin-submit-domain-button">
+              <i class="fa-solid fa-plus"></i>
+              <span id="admin-submit-domain-label">Add domain</span>
             </button>
           </div>
-          <form id="admin-add-domain-form" class="admin-form-grid admin-modal-form">
-            <input type="hidden" name="domain_id" />
-            <label>
-              Domain
-              <input type="text" name="domain" required placeholder="mail.example.com" />
-            </label>
-            <label>
-              Expires at
-              <input type="datetime-local" name="expires_at" />
-            </label>
-            <label class="admin-toggle-field" for="admin-domain-active">
-              <span class="admin-toggle-copy">
-                <strong>Active on create</strong>
-              </span>
-              <span class="admin-toggle-shell">
-                <input id="admin-domain-active" type="checkbox" name="active" checked />
-                <span class="admin-toggle-track">
-                  <span class="admin-toggle-knob"></span>
-                </span>
-              </span>
-            </label>
-            <div class="modal-actions admin-modal-footer">
-              <button class="ghost-button" type="button" id="admin-cancel-add-domain">Cancel</button>
-              <button type="submit" class="primary-button" id="admin-submit-domain-button">
-                <i class="fa-solid fa-plus"></i> <span id="admin-submit-domain-label">Add domain</span>
-              </button>
-            </div>
-          </form>
+        </form>
+      </div>
+    </div>
+
+    <div class="email-modal hidden" id="admin-edit-user-modal">
+      <div class="email-modal-content admin-modal-content">
+        <div class="modal-header admin-modal-header">
+          <div class="admin-modal-copy">
+            <h2>Edit user</h2>
+          </div>
+          <button class="close-btn" type="button" id="admin-close-edit-user" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
+        <form id="admin-edit-user-form" class="admin-form-grid admin-modal-form admin-edit-user-form">
+          <input type="hidden" name="uid" />
+          <label>
+            Display name
+            <input type="text" name="display_name" placeholder="User display name" />
+          </label>
+          <label>
+            Email
+            <input type="email" name="email" required placeholder="user@example.com" />
+          </label>
+          <div class="admin-modal-footer admin-edit-user-footer">
+            <button class="admin-secondary-button admin-edit-user-cancel" type="button" id="admin-cancel-edit-user">Cancel</button>
+            <button type="submit" class="admin-primary-button admin-edit-user-save">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>Save user</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
     <script type="module" src="/js/core/theme.js?v=20260324"></script>
-    <script type="module" src="/js/pages/admin.js?v=20260324"></script>
+    <script type="module" src="/js/pages/admin.js?v=20260324n"></script>
   </body>
 </html>

@@ -1,94 +1,111 @@
 # TODO
 
-## Mục tiêu hiện tại
+## Ưu tiên hiện tại
 
-- Chốt vòng frontend hiện tại sau đợt refactor `public/`
-- Giữ UI đồng bộ giữa `index`, `login`, `forgot-password`, `app`, `submit-domain`
-- Không làm thay đổi contract backend nếu không thực sự cần
+- Chốt UI `/admin`
+- Rà lại `/app` trên màn hình lớn
+- Dọn cấu trúc backend sau đợt thêm admin users / emails / mails
 
-## Ưu tiên cao
+## Admin
 
-- Rà lại toàn bộ `/app` khi đổi ngôn ngữ
-  - guest mode
-  - logged-in mode
-  - placeholder text
-  - sidebar empty state
-  - button labels
-- Rà lại toàn bộ `/app` responsive
-  - navbar
-  - sidebar / main split
-  - footer
-  - theme button
-- Kiểm tra `/forgot-password`
-  - gửi reset mail thành công
-  - lỗi email không hợp lệ
-  - lỗi too many requests
-  - copy EN/VI
-
-## UI/Auth
-
-- Kiểm tra lại flow guest của `/app`
-  - vào `/app` không redirect sang `/login`
-  - `Create` ở sidebar redirect sang register đúng
-  - `Log in` ở topbar và placeholder redirect đúng
-- Rà lại `/login`
-  - tab login/register
-  - Google sign-in
-  - link `Forgot password?`
-- Rà lại `/forgot-password`
-  - topbar
+- Rà lại toàn bộ `/admin` desktop
   - spacing
-  - alert success/error
-  - `Back to login`
+  - typography
+  - table density
+  - modal edit user
+- Rà lại `/admin` mobile
+  - topbar
+  - sidebar drawer
+  - bảng domains
+  - bảng users / emails / mails
+- Làm rõ luồng dữ liệu anonymous trong admin
+  - có làm section riêng cho anonymous inboxes hay không
+- Kiểm tra lại toàn bộ action admin
+  - update user
+  - delete user
+  - delete one email
+  - delete all emails
+  - open mail detail
+  - domain moderation
+- Cân nhắc thêm pagination / search tốt hơn cho:
+  - users
+  - emails
+  - mails
 
-## Ngôn ngữ / copy
+## App
 
-- Chuẩn hóa wording giữa:
-  - `email`
-  - `mail`
-  - `inbox`
-- Kiểm tra lại các text guest-state ở `/app`
-- Kiểm tra lại các text footer ở tất cả page public
+- Rà lại `/app` breakpoint lớn `>= 1440px`
+  - container width
+  - sidebar width
+  - spacing topbar / footer
+  - mail modal width
+- Kiểm tra lại guest mode của `/app`
+  - wording
+  - CTA
+  - language switcher
+- Rà lại copy trong `/app`
+  - thống nhất `email`, `mail`, `inbox`
 
-## Backend / config
+## Auth
 
-- Kiểm tra lại `/firebase/config`
-  - `is_production`
-  - `app_inbox_page_size`
-- Kiểm tra env đang dùng đúng:
-  - `ANYMOUSE_INBOX_PAGE_SIZE`
-  - `APP_INBOX_PAGE_SIZE`
-  - `GENERATE_RATE_LIMIT_MAX`
-  - `GENERATE_RATE_LIMIT_WINDOW_SECONDS`
+- Kiểm tra lại redirect flow sau login
+  - từ `/app`
+  - từ `/admin`
+- Rà lại `/forgot-password`
+  - spacing
+  - success / error states
+  - mobile layout
 
-## Kiểm thử thủ công
+## Backend
+
+- Dọn lại cấu trúc route anonymous
+  - `anonymous.routes.js`
+  - `inbox.routes.js`
+  - tránh trùng vai trò
+- Rà lại lớp service cũ còn chồng chéo
+  - `user.service.js`
+  - `mail.service.js`
+  - `inbox.service.js`
+- Kiểm tra hiệu năng các admin query
+  - merge Firebase Auth + Firestore
+  - cursor pagination
+  - total count logic
+
+## Docs
+
+- Giữ `README.md` đồng bộ nếu route hoặc flow admin đổi tiếp
+- Cập nhật báo cáo nội bộ nếu cấu trúc backend còn refactor thêm
+
+## Test tay
 
 - `/`
-  - tạo inbox
-  - refresh
+  - generate inbox
   - auto-refresh
-  - mở mail
-  - xóa mail
+  - open mail
+  - delete mail
 - `/login`
-  - login email/password
+  - login
   - register
   - Google sign-in
 - `/forgot-password`
-  - gửi reset link
+  - request reset mail
 - `/app`
-  - guest state
-  - login xong quay lại app
-  - tạo inbox
-  - load mail
-  - modal mail
-  - auto-refresh không phá UI
-  - logout về guest state
+  - guest mode
+  - create inbox
+  - mail modal
+  - delete all mails
+  - logout
 - `/submit-domain`
+  - submit domain
 - `/admin`
+  - overview
+  - domains
+  - users
+  - emails
+  - mails
+  - edit user popup
+  - delete user
+  - delete one email
+  - delete all emails
 - `/privacy`
-
-## Dọn repo
-
-- Dọn CSS/JS thừa sau đợt chỉnh UI
-- Rà lại cache-busting version trong HTML
-- Giữ `README.md` đồng bộ nếu flow auth hoặc route thay đổi tiếp
+  - desktop / mobile

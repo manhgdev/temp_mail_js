@@ -20,6 +20,14 @@ const elements = {
   registerBtn: $('#register-btn')
 };
 
+const getRedirectTarget = () => {
+  const raw = new URLSearchParams(window.location.search).get('redirect') || '/app';
+  if (!raw.startsWith('/') || raw.startsWith('//')) {
+    return '/app';
+  }
+  return raw;
+};
+
 const switchTab = (tab) => {
   document.querySelectorAll('.auth-tab').forEach((item) => item.classList.remove('active'));
   document.querySelectorAll('.panel').forEach((item) => item.classList.remove('active'));
@@ -125,7 +133,7 @@ const handleLogin = async (event, auth) => {
 
   try {
     await signInWithEmailAndPassword(auth, email, password);
-    window.location.href = '/app';
+    window.location.href = getRedirectTarget();
   } catch (error) {
     showAlert('login-alert', authErrorMessage(error.code, 'login'));
     setLoading(elements.loginBtn, false);
@@ -146,7 +154,7 @@ const handleRegister = async (event, auth) => {
     if (name) {
       await updateProfile(credential.user, { displayName: name });
     }
-    window.location.href = '/app';
+    window.location.href = getRedirectTarget();
   } catch (error) {
     showAlert('register-alert', authErrorMessage(error.code, 'register'));
     setLoading(elements.registerBtn, false);
@@ -177,7 +185,7 @@ const initPage = async () => {
   const auth = await ensureFirebaseAuth({ persist: true });
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      window.location.href = '/app';
+      window.location.href = getRedirectTarget();
     }
   });
 

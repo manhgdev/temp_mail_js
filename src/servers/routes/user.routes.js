@@ -1,13 +1,14 @@
 import {
-  getOrCreateUserProfile,
-  getUserInboxList,
+  getOrCreateUserProfile
+} from '../../services/user/user-profile.service.js';
+import {
   getUserInboxListPaginated,
   countUserInboxes,
   resetUserInboxUnreadCount,
   createUserOwnedInbox,
   removeUserInbox,
   removeAllUserInboxes
-} from '../../services/user.service.js';
+} from '../../services/user/user-inbox.service.js';
 import {
   sendJson,
   badRequest,

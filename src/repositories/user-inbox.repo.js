@@ -86,6 +86,20 @@ export const deleteUserInbox = async (uid, email) => {
   await getInboxesCollection(uid).doc(normalized).delete();
 };
 
+export const deleteAllUserInboxes = async (uid) => {
+  const snapshot = await getInboxesCollection(uid).get();
+  if (snapshot.empty) {
+    return 0;
+  }
+
+  const batch = getFirebaseFirestore().batch();
+  snapshot.docs.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
+  return snapshot.docs.length;
+};
+
 export const countUserInboxes = async (uid) => {
   const snapshot = await getInboxesCollection(uid).count().get();
   return snapshot.data().count || 0;
